@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyceliumPanel BIM — Smart Object</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap');
+:root{--soil:#1a1208;--bark:#2d1f0e;--moss:#3d4a2e;--lichen:#7a8c5e;--myc:#c8b99a;--spore:#e8dcc8;--cream:#f5efe3;--neg:#5a9e6e;--pos:#c46a3a;--acc:#8fbc8f;--warn:#d4840a}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--soil);color:var(--spore);font-family:'DM Mono',monospace;font-size:11px}
+
+/* TOPBAR */
+#topbar{height:40px;background:var(--bark);border-bottom:1px solid #3a2a15;display:flex;align-items:center;padding:0 14px;gap:12px;flex-shrink:0;z-index:200}
+.logo{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:300;letter-spacing:3px;color:var(--myc);white-space:nowrap}
+.logo em{color:var(--acc);font-style:italic}
+.badge{background:var(--moss);border:1px solid var(--lichen);border-radius:2px;padding:2px 7px;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc);white-space:nowrap}
+.badge.live{border-color:var(--neg);color:var(--neg)}
+.badge.warn{border-color:var(--warn);color:var(--warn)}
+#counters{margin-left:auto;display:flex;gap:12px;align-items:center;font-size:9px;color:var(--myc)}
+#counters strong{color:var(--acc);font-size:12px}
+.tbtn{background:rgba(90,158,110,.12);border:1px solid rgba(90,158,110,.35);color:var(--acc);padding:3px 9px;border-radius:3px;font-family:'DM Mono',monospace;font-size:8px;cursor:pointer;letter-spacing:1px;white-space:nowrap}
+.tbtn:hover{background:rgba(90,158,110,.25)}
+.tbtn.warn{background:rgba(212,132,10,.12);border-color:rgba(212,132,10,.4);color:var(--warn)}
+
+/* LAYOUT */
+#layout{display:flex;height:calc(100vh - 40px)}
+.side{width:296px;flex-shrink:0;background:var(--bark);display:flex;flex-direction:column;overflow:hidden}
+.side.left{border-right:1px solid #3a2a15}
+.side.right{border-left:1px solid #3a2a15}
+.sec{border-bottom:1px solid #3a2a15;padding:11px 13px}
+.sec-lbl{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:var(--lichen);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.sec-lbl .dot{width:5px;height:5px;border-radius:50%;background:var(--lichen)}
+.sec-lbl .dot.green{background:var(--neg);box-shadow:0 0 4px var(--neg)}
+.sec-lbl .dot.amber{background:var(--warn);box-shadow:0 0 4px var(--warn)}
+
+/* SPECS */
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.sp{background:rgba(255,255,255,.04);border:1px solid #3a2a15;border-radius:3px;padding:6px 8px}
+.sp-v{font-size:15px;color:var(--myc)}.sp-u{font-size:8px;color:var(--lichen)}.sp-l{font-size:7.5px;color:var(--lichen);letter-spacing:1px;text-transform:uppercase;margin-top:1px}
+.irow{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.ilbl{width:90px;font-size:8.5px;color:var(--myc);flex-shrink:0}
+.btrack{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.bfill{height:100%;border-radius:3px}.bfill.n{background:linear-gradient(90deg,#5a9e6e,#8fbc8f)}.bfill.m{background:linear-gradient(90deg,#7a8c5e,#a0b080)}
+.ival{font-size:8.5px;width:72px;text-align:right;flex-shrink:0}
+.lcwrap{padding-bottom:18px}
+.lcbars{display:flex;gap:3px;align-items:flex-end;height:50px}
+.lcb{flex:1;border-radius:2px 2px 0 0;min-height:4px;position:relative;cursor:pointer;transition:filter .2s}
+.lcb:hover{filter:brightness(1.4)}
+.lcb::after{content:attr(data-l);position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:7px;color:var(--lichen);white-space:nowrap}
+.export-row{display:flex;gap:5px;flex-wrap:wrap}
+.ebtn{flex:1;min-width:55px;background:rgba(255,255,255,.04);border:1px solid #3a2a15;color:var(--myc);padding:6px 4px;border-radius:3px;font-family:'DM Mono',monospace;font-size:7.5px;cursor:pointer;transition:all .2s;text-align:center}
+.ebtn:hover{border-color:var(--acc);color:var(--acc);background:rgba(143,188,143,.08)}
+.ebtn .fmt{font-size:10px;display:block;color:var(--acc);margin-bottom:2px}
+
+/* BIM LIST */
+.blist-wrap{flex:1;overflow-y:auto;padding:8px 12px}
+.blist-wrap::-webkit-scrollbar{width:3px}
+.blist-wrap::-webkit-scrollbar-thumb{background:var(--moss);border-radius:2px}
+.bi{background:rgba(255,255,255,.03);border:1px solid #3a2a15;border-radius:4px;padding:8px 10px;margin-bottom:5px;cursor:pointer;transition:all .2s;position:relative}
+.bi:hover,.bi.on{border-color:var(--lichen);background:rgba(143,188,143,.06)}
+.bi.on::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--acc);border-radius:4px 0 0 4px}
+.bi.live-src{border-color:rgba(90,158,110,.4)}
+.bi.live-src .bi-name::after{content:' ●';color:var(--neg);font-size:7px}
+.bi-name{color:var(--myc);font-size:9.5px;margin-bottom:3px}
+.bi-meta{font-size:7.5px;color:var(--lichen);display:flex;justify-content:space-between}
+.bi-imp{font-size:8.5px;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap}
+.bi-imp .g{color:var(--neg)}
+.bi-src{font-size:7px;color:var(--lichen);margin-top:3px;letter-spacing:.5px}
+.bi-src.live{color:var(--neg)}
+.addbtn{width:100%;background:transparent;border:1px dashed var(--moss);color:var(--lichen);padding:7px;cursor:pointer;border-radius:4px;font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;transition:all .2s;margin-top:4px}
+.addbtn:hover{border-color:var(--acc);color:var(--acc)}
+
+/* VIEWER */
+#viewer{flex:1;position:relative;overflow:hidden}
+#three-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;background:#0a0805}
+.vov{position:absolute;pointer-events:none}
+#vid{top:14px;left:14px;background:rgba(10,8,4,.9);border:1px solid #3a2a15;border-radius:4px;padding:8px 12px;font-size:8.5px;color:var(--lichen)}
+#vid .pid{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--myc);letter-spacing:2px}
+#vid .hash{font-size:7.5px;color:#4a3820;margin-top:3px}
+#gwpr{top:14px;right:14px;text-align:right}
+#gwpr .big{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:300;color:var(--neg);line-height:1}
+#gwpr .unit{font-size:8.5px;color:var(--lichen)}.#gwpr .lbl{font-size:7.5px;color:#5a6e45;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+#vtags{bottom:56px;left:14px;background:rgba(10,8,4,.9);border:1px solid #3a2a15;border-radius:4px;padding:9px 13px;max-width:260px}
+#vtags .tit{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--myc);margin-bottom:6px;font-style:italic}
+.trow{display:flex;flex-wrap:wrap;gap:3px}
+.tag{background:rgba(90,158,110,.15);border:1px solid rgba(90,158,110,.3);color:var(--acc);padding:2px 6px;border-radius:2px;font-size:7.5px;letter-spacing:.8px}
+#vctrl{bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:6px;pointer-events:all}
+.cb{background:rgba(10,8,4,.9);border:1px solid #3a2a15;color:var(--lichen);padding:5px 11px;cursor:pointer;border-radius:3px;font-family:'DM Mono',monospace;font-size:8.5px;transition:all .2s}
+.cb:hover,.cb.on{border-color:var(--acc);color:var(--acc)}
+#loadmsg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0805;z-index:10;transition:opacity .6s}
+#loadmsg .ico{font-size:44px;margin-bottom:12px;animation:spin 4s linear infinite}
+#loadmsg .txt{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--myc);letter-spacing:3px}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
+/* AGENT RIGHT PANEL */
+#aghdr{padding:11px 13px;border-bottom:1px solid #3a2a15;display:flex;align-items:center;gap:10px}
+.ava{width:30px;height:30px;border-radius:50%;background:var(--moss);border:1px solid var(--lichen);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;position:relative}
+.pulse{position:absolute;width:8px;height:8px;background:var(--neg);border-radius:50%;bottom:-1px;right:-1px;animation:p 2s infinite}
+@keyframes p{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.agname{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--myc)}
+.agstat{font-size:7.5px;color:var(--neg);letter-spacing:1px}
+#ctabs{display:flex;border-bottom:1px solid #3a2a15;padding:0 4px}
+.ctab{padding:5px 8px;font-size:7px;letter-spacing:1px;text-transform:uppercase;color:var(--lichen);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.ctab.on,.ctab:hover{color:var(--acc);border-bottom-color:var(--acc)}
+#ctxv{padding:9px 12px;border-bottom:1px solid #3a2a15;font-size:8px;color:var(--lichen);line-height:1.6;max-height:68px;overflow-y:auto}
+.cchip{display:inline-block;background:rgba(90,158,110,.1);border:1px solid rgba(90,158,110,.2);color:#7ab890;padding:1px 5px;border-radius:2px;margin:1px;font-size:7px}
+#msgs{flex:1;overflow-y:auto;padding:11px;display:flex;flex-direction:column;gap:9px}
+#msgs::-webkit-scrollbar{width:3px}
+#msgs::-webkit-scrollbar-thumb{background:var(--moss);border-radius:2px}
+.msg{max-width:92%;animation:fu .3s ease}
+@keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.msg.u{align-self:flex-end}.msg.a{align-self:flex-start}
+.bub{border-radius:6px;padding:8px 10px;font-size:9.5px;line-height:1.65}
+.msg.u .bub{background:rgba(143,188,143,.12);border:1px solid rgba(143,188,143,.25);color:var(--cream)}
+.msg.a .bub{background:rgba(255,255,255,.04);border:1px solid #3a2a15;color:var(--spore)}
+.mmeta{font-size:7px;color:var(--lichen);margin-top:3px}
+.msg.u .mmeta{text-align:right}
+.tdots{display:flex;gap:4px;align-items:center;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid #3a2a15;border-radius:6px;width:fit-content}
+.td{width:4px;height:4px;background:var(--lichen);border-radius:50%;animation:tb 1.2s infinite}
+.td:nth-child(2){animation-delay:.2s}.td:nth-child(3){animation-delay:.4s}
+@keyframes tb{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+#cinp{padding:9px 11px;border-top:1px solid #3a2a15}
+.qps{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px}
+.qp{background:transparent;border:1px solid #3a2a15;color:var(--lichen);padding:3px 7px;border-radius:3px;font-family:'DM Mono',monospace;font-size:7.5px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.qp:hover{border-color:var(--lichen);color:var(--myc)}
+.inrow{display:flex;gap:6px;align-items:flex-end}
+#ti{flex:1;background:rgba(255,255,255,.04);border:1px solid #3a2a15;border-radius:4px;padding:7px 10px;color:var(--spore);font-family:'DM Mono',monospace;font-size:9.5px;resize:none;min-height:34px;max-height:80px;outline:none;line-height:1.5;transition:border-color .2s}
+#ti:focus{border-color:var(--lichen)}
+#ti::placeholder{color:#4a3a20}
+#sb{background:var(--moss);border:1px solid var(--lichen);color:var(--acc);padding:7px 12px;border-radius:4px;cursor:pointer;font-family:'DM Mono',monospace;font-size:9.5px;height:34px;transition:all .2s;white-space:nowrap}
+#sb:hover{background:rgba(143,188,143,.2);border-color:var(--acc)}
+#sb:disabled{opacity:.4;cursor:not-allowed}
+
+/* SYNC MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(8,6,3,.93);z-index:500;display:none;align-items:center;justify-content:center}
+.modal-bg.show{display:flex}
+.mbox{background:var(--bark);border:1px solid var(--lichen);border-radius:8px;width:92%;max-width:540px;padding:24px 26px;position:relative;max-height:92vh;overflow-y:auto}
+.mbox h2{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--myc);margin-bottom:3px}
+.mbox .msub{font-size:8px;color:var(--lichen);letter-spacing:2px;text-transform:uppercase;margin-bottom:18px}
+.mclose{position:absolute;top:12px;right:14px;background:transparent;border:1px solid #3a2a15;color:var(--lichen);padding:4px 10px;cursor:pointer;border-radius:3px;font-family:'DM Mono',monospace;font-size:8px}
+.mclose:hover{border-color:var(--acc);color:var(--acc)}
+.form-row{display:flex;gap:8px;margin-bottom:10px;align-items:flex-end}
+.form-row label{display:block;font-size:8px;color:var(--lichen);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.form-row input, .form-row select{background:rgba(255,255,255,.04);border:1px solid #3a2a15;border-radius:3px;padding:7px 9px;color:var(--spore);font-family:'DM Mono',monospace;font-size:9.5px;outline:none;width:100%;transition:border-color .2s}
+.form-row input:focus,.form-row select:focus{border-color:var(--lichen)}
+.form-row .fld{flex:1}
+.fbtn{background:var(--moss);border:1px solid var(--lichen);color:var(--acc);padding:7px 14px;border-radius:3px;cursor:pointer;font-family:'DM Mono',monospace;font-size:9px;transition:all .2s;white-space:nowrap;height:34px;align-self:flex-end}
+.fbtn:hover{background:rgba(143,188,143,.2);border-color:var(--acc)}
+.mrow{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start;padding:10px;background:rgba(255,255,255,.03);border:1px solid #3a2a15;border-radius:5px}
+.mico{font-size:16px;flex-shrink:0;margin-top:2px}
+.mtxt strong{display:block;color:var(--acc);font-size:9.5px;margin-bottom:3px}
+.mtxt p{font-size:8.5px;color:var(--spore);line-height:1.75}
+.mtxt code{color:var(--acc);font-size:8px;background:rgba(143,188,143,.1);padding:1px 4px;border-radius:2px}
+.hdiv{border:none;border-top:1px solid #3a2a15;margin:14px 0}
+.step-num{display:inline-block;width:16px;height:16px;border-radius:50%;background:var(--moss);border:1px solid var(--lichen);color:var(--acc);font-size:8px;text-align:center;line-height:16px;margin-right:5px;flex-shrink:0}
+.status-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:3px;background:rgba(255,255,255,.03);border:1px solid #3a2a15;margin-bottom:8px;font-size:8.5px}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.status-dot.green{background:var(--neg);box-shadow:0 0 5px var(--neg)}
+.status-dot.amber{background:var(--warn);box-shadow:0 0 5px var(--warn)}
+.status-dot.red{background:#c46a3a}
+
+/* NOTIF */
+.notif{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--moss);border:1px solid var(--acc);color:var(--cream);padding:7px 16px;border-radius:4px;font-size:9.5px;z-index:999;animation:np .3s ease;pointer-events:none}
+@keyframes np{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="logo">Mycelium<em>Panel</em> BIM</div>
+  <span class="badge">EPD Embedded</span>
+  <span class="badge live">● Agent Live</span>
+  <span class="badge warn" id="sync-badge">⟳ Manual Sync</span>
+  <div id="counters">
+    <span>BIM Models: <strong id="mc">0</strong></span>
+    <span>Instances: <strong id="ic">0</strong></span>
+    <span>Net Carbon: <strong id="nc" style="color:var(--neg)">— kg CO₂e</strong></span>
+    <button class="tbtn" onclick="openSync()">+ Sync from Rhino / Revit</button>
+    <button class="tbtn" onclick="openHosting()">? How this works</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SYNC MODAL
+══════════════════════════════════════════════════ -->
+<div id="syncModal" class="modal-bg">
+  <div class="mbox">
+    <button class="mclose" onclick="closeModal('syncModal')">✕ Close</button>
+    <h2>Sync BIM Model</h2>
+    <div class="msub">Add or update a tracked model from Rhino, Revit, or any BIM tool</div>
+
+    <!-- STATUS ROW -->
+    <div class="status-row">
+      <div class="status-dot amber" id="conn-dot"></div>
+      <span id="conn-txt" style="color:var(--warn)">Manual mode — enter data below. For live auto-sync see setup guide.</span>
+    </div>
+
+    <!-- MANUAL ENTRY FORM -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:8px;color:var(--lichen);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">▸ Manual entry (works right now, no setup needed)</div>
+      <div class="form-row">
+        <div class="fld"><label>Software / File name</label><input id="f-model" placeholder="e.g. MyceliumProject.3dm — Rhino 8" /></div>
+        <div class="fld"><label>Zone / Description</label><input id="f-zone" placeholder="e.g. Facade Panels" /></div>
+      </div>
+      <div class="form-row">
+        <div class="fld"><label>Number of panel instances</label><input id="f-qty" type="number" placeholder="2" min="1" /></div>
+        <div class="fld"><label>Project phase</label>
+          <select id="f-phase">
+            <option>SD</option><option>DD</option><option selected>CD</option><option>CA</option><option>Design</option><option>Construction</option>
+          </select>
+        </div>
+        <button class="fbtn" onclick="addFromForm()">Add / Update ↵</button>
+      </div>
+      <div style="font-size:8px;color:var(--lichen);margin-top:6px">
+        💡 This immediately updates the dashboard totals, impact data, and Myra's context.
+      </div>
+    </div>
+
+    <hr class="hdiv">
+
+    <!-- AUTO SYNC GUIDE -->
+    <div style="font-size:8px;color:var(--lichen);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">▸ Automatic live sync (Rhino Grasshopper → dashboard)</div>
+
+    <div class="mrow">
+      <div class="mico">1️⃣</div>
+      <div class="mtxt">
+        <strong>Create a free Supabase project</strong>
+        <p>Go to <code>supabase.com</code> → New Project → free tier. Create a table called <code>bim_instances</code> with columns: <code>model text, zone text, qty int, phase text, source text</code>. Copy your Project URL and anon key from Settings → API.</p>
+      </div>
+    </div>
+    <div class="mrow">
+      <div class="mico">2️⃣</div>
+      <div class="mtxt">
+        <strong>Paste your Supabase credentials here</strong>
+        <p>Enter your URL and key below — the dashboard will then poll Supabase every 5 seconds and auto-update whenever Rhino writes a new count.</p>
+        <div class="form-row" style="margin-top:8px">
+          <div class="fld"><label>Supabase URL</label><input id="sb-url" placeholder="https://xxxx.supabase.co" /></div>
+        </div>
+        <div class="form-row">
+          <div class="fld"><label>Supabase anon key</label><input id="sb-key" placeholder="eyJ..." /></div>
+          <button class="fbtn" onclick="saveSupabase()">Connect ↵</button>
+        </div>
+      </div>
+    </div>
+    <div class="mrow">
+      <div class="mico">3️⃣</div>
+      <div class="mtxt">
+        <strong>Run the Grasshopper script in Rhino</strong>
+        <p>Download the <code>rhino_tracker.gh</code> file (button below). Open it in Grasshopper. It detects all objects on the layer <code>MyceliumPanel</code>, counts them, and POSTs the count to Supabase every time the count changes. The dashboard updates automatically within 5 seconds.</p>
+        <button class="fbtn" style="margin-top:8px" onclick="downloadGH()">↓ Download rhino_tracker.gh script</button>
+        <button class="fbtn" style="margin-top:8px;margin-left:6px" onclick="downloadPY()">↓ Download GHPython code</button>
+      </div>
+    </div>
+    <div class="mrow">
+      <div class="mico">4️⃣</div>
+      <div class="mtxt">
+        <strong>Or use the Revit Dynamo script</strong>
+        <p>For Revit: run the <code>mycelium_tracker.dyn</code> Dynamo script (download below). It queries all instances of the MyceliumPanel family and POSTs the count to Supabase on run, or scheduled via the Dynamo Player.</p>
+        <button class="fbtn" style="margin-top:8px" onclick="downloadDynamo()">↓ Download Dynamo script (.dyn)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     HOSTING MODAL
+══════════════════════════════════════════════════ -->
+<div id="hostModal" class="modal-bg">
+  <div class="mbox">
+    <button class="mclose" onclick="closeModal('hostModal')">✕ Close</button>
+    <h2>How live tracking works</h2>
+    <div class="msub">Data flow between Rhino / Revit and this dashboard</div>
+    <div class="mrow">
+      <div class="mico">🔴</div>
+      <div class="mtxt">
+        <strong>Why Rhino doesn't auto-update this dashboard</strong>
+        <p>The dashboard is a static HTML file. When you copy a panel in Rhino, Rhino has no way to "call" a webpage on its own — there's no built-in connection. A bridge is needed: a script running inside Rhino that detects changes and sends data out, and a small database that the dashboard reads from.</p>
+      </div>
+    </div>
+    <div class="mrow">
+      <div class="mico">🟡</div>
+      <div class="mtxt">
+        <strong>Manual sync (works right now)</strong>
+        <p>Click <strong>"+ Sync from Rhino / Revit"</strong> in the top bar and type the filename + instance count. This instantly updates the dashboard totals, impact data, and Myra's awareness. Good for presentations or small teams.</p>
+      </div>
+    </div>
+    <div class="mrow">
+      <div class="mico">🟢</div>
+      <div class="mtxt">
+        <strong>Automatic live sync (full setup ~20 min, free)</strong>
+        <p><strong>Stack:</strong> Rhino Grasshopper Python script → Supabase free database → this dashboard polls every 5 seconds.<br><br>
+        Once set up: every time you copy/delete a panel object on the <code>MyceliumPanel</code> layer in Rhino, the Grasshopper script fires, updates Supabase, and the dashboard refreshes automatically — showing live instance count, carbon total, cost, and install hours.</p>
+      </div>
+    </div>
+    <div class="mrow">
+      <div class="mico">💰</div>
+      <div class="mtxt">
+        <strong>Cost</strong>
+        <p><strong>Dashboard hosting:</strong> Free (GitHub Pages / Netlify)<br>
+        <strong>Database:</strong> Free (Supabase free tier — 500MB, plenty for BIM tracking data)<br>
+        <strong>AI Agent (Myra):</strong> Pay-as-you-go Anthropic API — ~$0.02–0.10 per day of use<br>
+        <strong>Rhino/Grasshopper scripts:</strong> Free to run if you already have Rhino</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div id="layout">
+  <!-- LEFT PANEL -->
+  <div class="side left">
+    <div class="sec">
+      <div class="sec-lbl"><span class="dot"></span>Panel Specifications</div>
+      <div class="specs">
+        <div class="sp"><div class="sp-v">1000</div><div class="sp-u">mm × 1000 mm</div><div class="sp-l">H × W</div></div>
+        <div class="sp"><div class="sp-v">80</div><div class="sp-u">mm depth</div><div class="sp-l">Depth</div></div>
+        <div class="sp"><div class="sp-v">~9.6</div><div class="sp-u">kg</div><div class="sp-l">Unit Mass</div></div>
+        <div class="sp"><div class="sp-v">0.08</div><div class="sp-u">m³</div><div class="sp-l">Volume</div></div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-lbl"><span class="dot"></span>EPD Impact / Unit</div>
+      <div class="irow"><span class="ilbl">GWP A1–C4</span><div class="btrack"><div class="bfill n" style="width:88%"></div></div><span class="ival" style="color:var(--neg)">−3.4 kg CO₂e</span></div>
+      <div class="irow"><span class="ilbl">Biogenic Carbon</span><div class="btrack"><div class="bfill n" style="width:70%"></div></div><span class="ival" style="color:var(--neg)">−5.1 kg CO₂e</span></div>
+      <div class="irow"><span class="ilbl">Embodied Energy</span><div class="btrack"><div class="bfill m" style="width:22%"></div></div><span class="ival">18.4 MJ</span></div>
+      <div class="irow"><span class="ilbl">Water Use</span><div class="btrack"><div class="bfill m" style="width:18%"></div></div><span class="ival">62 L</span></div>
+      <div class="irow"><span class="ilbl">Acidification</span><div class="btrack"><div class="bfill m" style="width:12%"></div></div><span class="ival">0.004 mol H⁺e</span></div>
+    </div>
+    <div class="sec">
+      <div class="sec-lbl"><span class="dot"></span>Life Cycle Stages</div>
+      <div class="lcwrap">
+        <div class="lcbars">
+          <div class="lcb" style="background:#5a9e6e;height:16px" data-l="A1"></div>
+          <div class="lcb" style="background:#7a8c5e;height:8px"  data-l="A2"></div>
+          <div class="lcb" style="background:#7a8c5e;height:10px" data-l="A3"></div>
+          <div class="lcb" style="background:#5a9e6e;height:6px"  data-l="A4"></div>
+          <div class="lcb" style="background:#5a9e6e;height:20px" data-l="B1"></div>
+          <div class="lcb" style="background:#5a6e45;height:4px"  data-l="B6"></div>
+          <div class="lcb" style="background:#5a9e6e;height:30px" data-l="C3"></div>
+          <div class="lcb" style="background:#8fbc8f;height:44px" data-l="D"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-lbl"><span class="dot"></span>Export for CAD / BIM</div>
+      <div class="export-row">
+        <button class="ebtn" onclick="exportIFC()"><span class="fmt">IFC</span>Revit/ArchiCAD</button>
+        <button class="ebtn" onclick="exportOBJ()"><span class="fmt">OBJ</span>Rhino/Blender</button>
+        <button class="ebtn" onclick="exportJSON()"><span class="fmt">JSON</span>Smart Data</button>
+        <button class="ebtn" onclick="exportCSV()"><span class="fmt">CSV</span>Schedule</button>
+      </div>
+    </div>
+    <div class="sec" style="padding-bottom:7px">
+      <div class="sec-lbl">
+        <span class="dot" id="bim-dot"></span>
+        BIM Models Tracked
+        <span style="margin-left:auto;font-size:7px;color:var(--lichen)" id="last-sync-lbl"></span>
+      </div>
+    </div>
+    <div class="blist-wrap" id="blist"></div>
+  </div>
+
+  <!-- CENTER VIEWER -->
+  <div id="viewer">
+    <canvas id="three-canvas"></canvas>
+    <div id="loadmsg"><div class="ico">🍄</div><div class="txt">Growing Mycelium…</div></div>
+    <div class="vov" id="vid">
+      <div class="pid">MYC-PANEL-001</div>
+      <div>Pleurotus eryngii · Agroforestry bio-waste substrate</div>
+      <div class="hash">EPD-REF: AGF-MYC-2024-EU · ISO 14044 / EN 15804</div>
+    </div>
+    <div class="vov" id="gwpr">
+      <div class="big" id="gwp-big">−3.4</div>
+      <div class="unit">kg CO₂e / unit</div>
+      <div style="font-size:7.5px;color:#5a6e45;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px">Carbon Negative</div>
+    </div>
+    <div class="vov" id="vtags">
+      <div class="tit">Pleurotus + Hemp Hurd Composite</div>
+      <div class="trow">
+        <span class="tag">Carbon Negative</span><span class="tag">Biodegradable</span>
+        <span class="tag">Acoustic Rw=0.7</span><span class="tag">Fire Class B</span>
+        <span class="tag">Thermal λ=0.06</span><span class="tag">Compostable</span>
+        <span class="tag">VOC Free</span><span class="tag">Regenerative</span>
+      </div>
+    </div>
+    <div class="vov" id="vctrl">
+      <button class="cb on" onclick="setView('persp',this)">3D</button>
+      <button class="cb"    onclick="setView('top',this)">TOP</button>
+      <button class="cb"    onclick="setView('front',this)">FRONT</button>
+      <button class="cb"    onclick="setView('side',this)">SIDE</button>
+      <button class="cb"    onclick="toggleWire(this)">WIRE</button>
+      <button class="cb"    onclick="toggleSection(this)">SECTION</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: AI AGENT -->
+  <div class="side right">
+    <div id="aghdr">
+      <div class="ava">🍄<div class="pulse"></div></div>
+      <div>
+        <div class="agname">Myra — BIM Impact Agent</div>
+        <div class="agstat" id="agstat-txt">● Waiting for tracked models…</div>
+      </div>
+    </div>
+    <div id="ctabs">
+      <div class="ctab on" onclick="switchTab('bim',this)">BIM Context</div>
+      <div class="ctab"    onclick="switchTab('regen',this)">Regen</div>
+      <div class="ctab"    onclick="switchTab('epd',this)">EPD</div>
+      <div class="ctab"    onclick="switchTab('totals',this)">Totals</div>
+    </div>
+    <div id="ctxv"></div>
+    <div id="msgs"></div>
+    <div id="cinp">
+      <div class="qps">
+        <button class="qp" onclick="sq('Analyse all BIM instances and suggest optimisations')">Analyse all</button>
+        <button class="qp" onclick="sq('Total carbon impact across all tracked models?')">Carbon total</button>
+        <button class="qp" onclick="sq('Suggest scheduling to reduce embodied carbon')">Schedule</button>
+        <button class="qp" onclick="sq('Cost vs impact analysis')">Cost/impact</button>
+      </div>
+      <div class="inrow">
+        <textarea id="ti" placeholder="Ask Myra about impact, scheduling, design…" rows="1"></textarea>
+        <button id="sb" onclick="sendMsg()">Send ↑</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ══════════════════════════════════════════
+// THREE.JS VIEWER
+// ══════════════════════════════════════════
+let renderer,scene,camera,panelMesh,filaments,filMat;
+let wireMode=false,sectionMode=false,isDrag=false,mx=0,my=0;
+let rotX=0.28,rotY=0.45,tRX=0.28,tRY=0.45,viewMode='persp';
+
+function initThree(){
+  const cv=document.getElementById('three-canvas');
+  const vw=document.getElementById('viewer');
+  const W=vw.clientWidth,H=vw.clientHeight;
+  if(!W||!H){requestAnimationFrame(initThree);return;}
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(W,H);
+  renderer.setClearColor(0x0a0805,1);
+  renderer.shadowMap.enabled=true;
+  scene=new THREE.Scene();
+  scene.fog=new THREE.Fog(0x0a0805,5,12);
+  camera=new THREE.PerspectiveCamera(40,W/H,0.01,50);
+  camera.position.set(1.6,1.0,2.1);
+  camera.lookAt(0,0,0);
+  scene.add(new THREE.AmbientLight(0x604020,0.7));
+  const sun=new THREE.DirectionalLight(0xffeedd,1.6);
+  sun.position.set(2,4,3);sun.castShadow=true;scene.add(sun);
+  const fill=new THREE.DirectionalLight(0x507050,0.5);fill.position.set(-3,1,-2);scene.add(fill);
+  const back=new THREE.DirectionalLight(0x3a2508,0.4);back.position.set(0,-2,-3);scene.add(back);
+  const rim=new THREE.PointLight(0x60aa60,0.8,8);rim.position.set(-2,2.5,-2);scene.add(rim);
+  const geo=new THREE.BoxGeometry(1.0,1.0,0.08,30,30,4);
+  const pa=geo.attributes.position;
+  for(let i=0;i<pa.count;i++){const z=pa.getZ(i);if(Math.abs(z)>0.025){pa.setX(i,pa.getX(i)+(Math.random()-.5)*.014);pa.setY(i,pa.getY(i)+(Math.random()-.5)*.014);pa.setZ(i,z+(Math.random()-.5)*.007);}}
+  pa.needsUpdate=true;geo.computeVertexNormals();
+  const mat=new THREE.MeshStandardMaterial({color:0xb08548,roughness:0.93,metalness:0,emissive:new THREE.Color(0x180c02),emissiveIntensity:0.2});
+  panelMesh=new THREE.Mesh(geo,mat);panelMesh.castShadow=true;panelMesh.receiveShadow=true;scene.add(panelMesh);
+  const eGeo=new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,0.08));
+  scene.add(new THREE.LineSegments(eGeo,new THREE.LineBasicMaterial({color:0x8fbc8f,transparent:true,opacity:0.3})));
+  const fGeo=new THREE.BufferGeometry();
+  const N=900,fp=new Float32Array(N*3);
+  for(let i=0;i<N;i++){fp[i*3]=(Math.random()-.5)*1.04;fp[i*3+1]=(Math.random()-.5)*1.04;fp[i*3+2]=(Math.random()<.5?.042:-.042)+(Math.random()-.5)*.012;}
+  fGeo.setAttribute('position',new THREE.BufferAttribute(fp,3));
+  filMat=new THREE.PointsMaterial({color:0xa8d8a8,size:0.005,transparent:true,opacity:0.55});
+  filaments=new THREE.Points(fGeo,filMat);scene.add(filaments);
+  const grid=new THREE.GridHelper(6,28,0x2a1a06,0x1a0e04);grid.position.y=-0.72;scene.add(grid);
+  cv.addEventListener('mousedown',e=>{isDrag=true;mx=e.clientX;my=e.clientY;});
+  window.addEventListener('mouseup',()=>isDrag=false);
+  window.addEventListener('mousemove',e=>{if(!isDrag||viewMode!=='persp')return;tRY+=(e.clientX-mx)*.007;tRX+=(e.clientY-my)*.007;tRX=Math.max(-1.3,Math.min(1.3,tRX));mx=e.clientX;my=e.clientY;});
+  cv.addEventListener('wheel',e=>{camera.position.multiplyScalar(1+e.deltaY*.001);},{passive:true});
+  window.addEventListener('resize',()=>{const w=vw.clientWidth,h=vw.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();});
+  const lm=document.getElementById('loadmsg');lm.style.opacity='0';setTimeout(()=>lm.style.display='none',700);
+  let t=0;
+  (function loop(){requestAnimationFrame(loop);t+=.011;
+    if(viewMode==='persp'){rotX+=(tRX-rotX)*.08;rotY+=(tRY-rotY)*.08;if(!isDrag)tRY+=.003;panelMesh.rotation.set(rotX,rotY,0);filaments.rotation.set(rotX,rotY,0);}
+    const b=1+Math.sin(t*.4)*.003;panelMesh.scale.set(b,b,1);
+    if(filMat)filMat.opacity=.4+Math.sin(t*.9)*.12;
+    renderer.render(scene,camera);})();
+}
+window.addEventListener('load',()=>setTimeout(initThree,150));
+
+function setView(v,btn){viewMode=v;document.querySelectorAll('.cb').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');if(!camera)return;const pos={persp:[1.6,1.0,2.1],top:[0,3.2,.01],front:[0,0,3.0],side:[3.0,0,0]};const p=pos[v]||pos.persp;camera.position.set(p[0],p[1],p[2]);camera.lookAt(0,0,0);if(v!=='persp'&&panelMesh){panelMesh.rotation.set(0,0,0);filaments.rotation.set(0,0,0);}}
+function toggleWire(btn){wireMode=!wireMode;if(panelMesh)panelMesh.material.wireframe=wireMode;btn.classList.toggle('on',wireMode);}
+function toggleSection(btn){sectionMode=!sectionMode;btn.classList.toggle('on',sectionMode);if(!renderer)return;renderer.clippingPlanes=sectionMode?[new THREE.Plane(new THREE.Vector3(0,-1,0),.12)]:[];}
+
+// ══════════════════════════════════════════
+// BIM DATA STORE
+// ══════════════════════════════════════════
+const EPD={gwp:-3.4,bio:-5.1,energy:18.4,water:62,cost:85,install:0.25};
+let bimData=[];
+let supabaseURL='', supabaseKey='', pollInterval=null;
+
+function imp(qty){return{gwp:(qty*EPD.gwp).toFixed(1),bio:(qty*EPD.bio).toFixed(1),en:(qty*EPD.energy/1000).toFixed(2),wat:(qty*EPD.water/1000).toFixed(2),cost:(qty*EPD.cost).toLocaleString(),hrs:(qty*EPD.install).toFixed(1)};}
+
+function renderBIM(){
+  const list=document.getElementById('blist');
+  list.innerHTML='';
+  let tQ=0,tG=0,tC=0,tH=0;
+  if(bimData.length===0){
+    list.innerHTML=`<div style="padding:20px 12px;text-align:center;color:var(--lichen);font-size:8.5px;line-height:1.8">No BIM models tracked yet.<br><br>Click <strong style="color:var(--acc)">+ Sync from Rhino / Revit</strong> above to add your first model.</div>`;
+  } else {
+    bimData.forEach((d,i)=>{
+      const m=imp(d.qty);tQ+=d.qty;tG+=parseFloat(m.gwp);tC+=d.qty*EPD.cost;tH+=d.qty*EPD.install;
+      const el=document.createElement('div');
+      el.className='bi'+(d.source==='live'?' live-src':'');
+      el.innerHTML=`<div class="bi-name">${d.model}</div>
+        <div class="bi-meta"><span>${d.zone}</span><span>${d.qty} unit${d.qty>1?'s':''} · ${d.phase}</span></div>
+        <div class="bi-imp"><span class="g">GWP: ${m.gwp} kg CO₂e</span><span>€${m.cost}</span><span>${m.hrs}h install</span></div>
+        <div class="bi-src ${d.source==='live'?'live':''}">${d.source==='live'?'● live sync':'◎ manual entry'} · ${d.added||''}</div>`;
+      const del=document.createElement('button');
+      del.style.cssText='position:absolute;top:6px;right:6px;background:transparent;border:1px solid #3a2a15;color:var(--lichen);padding:1px 6px;border-radius:2px;font-family:"DM Mono",monospace;font-size:7px;cursor:pointer';
+      del.textContent='✕';del.onclick=(e)=>{e.stopPropagation();bimData.splice(i,1);renderBIM();updateAgent();};
+      el.appendChild(del);
+      list.appendChild(el);
+    });
+  }
+  const ab=document.createElement('button');
+  ab.className='addbtn';ab.textContent='+ Sync from Rhino / Revit';ab.onclick=openSync;
+  list.appendChild(ab);
+
+  document.getElementById('mc').textContent=bimData.length;
+  document.getElementById('ic').textContent=tQ;
+  document.getElementById('nc').textContent=tQ===0?'—':tG.toFixed(1)+' kg CO₂e';
+  document.getElementById('bim-dot').className='dot'+(tQ>0?' green':'');
+  document.getElementById('agstat-txt').textContent=tQ>0?`● Tracking ${bimData.length} model${bimData.length!==1?'s':''} · ${tQ} instances`:'● Waiting for tracked models…';
+
+  // Update context tabs
+  switchTabSilent(currentTab);
+}
+
+// ══════════════════════════════════════════
+// FORM — add from manual entry
+// ══════════════════════════════════════════
+function addFromForm(){
+  const model=document.getElementById('f-model').value.trim();
+  const zone=document.getElementById('f-zone').value.trim();
+  const qty=parseInt(document.getElementById('f-qty').value)||0;
+  const phase=document.getElementById('f-phase').value;
+  if(!model||qty<1){notif('Please enter a model name and quantity ≥ 1');return;}
+  // Update existing or add new
+  const existing=bimData.findIndex(d=>d.model===model);
+  const entry={model,zone:zone||'Unspecified',qty,phase,source:'manual',added:new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})};
+  if(existing>=0){bimData[existing]=entry;notif(`Updated: ${model} → ${qty} units`);}
+  else{bimData.push(entry);notif(`Added: ${model} with ${qty} units`);}
+  document.getElementById('f-model').value='';
+  document.getElementById('f-zone').value='';
+  document.getElementById('f-qty').value='';
+  document.getElementById('last-sync-lbl').textContent='synced '+entry.added;
+  renderBIM();
+  updateAgent();
+  closeModal('syncModal');
+}
+
+// ══════════════════════════════════════════
+// SUPABASE LIVE POLLING
+// ══════════════════════════════════════════
+function saveSupabase(){
+  supabaseURL=document.getElementById('sb-url').value.trim().replace(/\/$/,'');
+  supabaseKey=document.getElementById('sb-key').value.trim();
+  if(!supabaseURL||!supabaseKey){notif('Please enter both Supabase URL and key');return;}
+  localStorage.setItem('sb_url',supabaseURL);
+  localStorage.setItem('sb_key',supabaseKey);
+  startPolling();
+  notif('Supabase connected — polling every 5 seconds');
+  document.getElementById('conn-dot').className='status-dot green';
+  document.getElementById('conn-txt').style.color='var(--neg)';
+  document.getElementById('conn-txt').textContent='Live sync active — polling Supabase every 5 seconds';
+  document.getElementById('sync-badge').textContent='● Live Sync';
+  document.getElementById('sync-badge').style.borderColor='var(--neg)';
+  document.getElementById('sync-badge').style.color='var(--neg)';
+}
+
+function startPolling(){
+  if(pollInterval) clearInterval(pollInterval);
+  pollInterval=setInterval(fetchSupabase,5000);
+  fetchSupabase();
+}
+
+async function fetchSupabase(){
+  if(!supabaseURL||!supabaseKey) return;
+  try{
+    const res=await fetch(`${supabaseURL}/rest/v1/bim_instances?select=*`,{
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'}
+    });
+    const rows=await res.json();
+    if(Array.isArray(rows)&&rows.length>0){
+      // Merge live rows — replace any existing live entries, keep manual ones
+      bimData=bimData.filter(d=>d.source!=='live');
+      rows.forEach(r=>{
+        bimData.push({model:r.model||'Unknown',zone:r.zone||'Unspecified',qty:parseInt(r.qty)||0,phase:r.phase||'CD',source:'live',added:new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})});
+      });
+      document.getElementById('last-sync-lbl').textContent='live '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      renderBIM();
+    }
+  }catch(e){console.warn('Supabase poll failed:',e);}
+}
+
+// Restore saved credentials on load
+(()=>{
+  const url=localStorage.getItem('sb_url'), key=localStorage.getItem('sb_key');
+  if(url&&key){supabaseURL=url;supabaseKey=key;startPolling();}
+})();
+
+// ══════════════════════════════════════════
+// CONTEXT TABS
+// ══════════════════════════════════════════
+let currentTab='bim';
+function bimSum(){if(bimData.length===0)return'No models tracked yet.';return bimData.map(d=>{const m=imp(d.qty);return`${d.model} | ${d.zone} | ${d.qty} units | Phase ${d.phase} | GWP: ${m.gwp} kg CO₂e | €${m.cost} | ${m.hrs}h`;}).join('\n');}
+const ctxC={
+  bim:()=>bimData.length===0?'<span style="color:#5a4a30">No models tracked yet. Click + Sync to add.</span>':bimData.map(d=>`<span class="cchip">${d.model.split('—')[0].split('.')[0].trim()}</span><span class="cchip">${d.qty}u·${d.phase}</span>`).join(' ')+`<br><span style="color:#5a4a30">Tracking ${bimData.length} model${bimData.length!==1?'s':''} · ${bimData.reduce((a,b)=>a+b.qty,0)} total instances</span>`,
+  regen:()=>`<span class="cchip">Circular Economy</span><span class="cchip">Biophilic Design</span><span class="cchip">Carbon Sequestration</span><span class="cchip">Waste Valorisation</span><span class="cchip">LBC</span><span class="cchip">BREEAM Outstanding</span><br><span style="color:#5a4a30">Regenerative design frameworks active.</span>`,
+  epd:()=>`<span class="cchip">GWP −3.4 kg CO₂e</span><span class="cchip">Biogenic −5.1</span><span class="cchip">18.4 MJ</span><span class="cchip">62L water</span><span class="cchip">ISO 14044</span><span class="cchip">EN 15804</span><br><span style="color:#5a4a30">Pleurotus eryngii · Hemp hurd 60% · Straw 25% · Oak sawdust 15%.</span>`,
+  totals:()=>{
+    const tQ=bimData.reduce((a,b)=>a+b.qty,0);
+    if(tQ===0)return'<span style="color:#5a4a30">No data yet.</span>';
+    return`<span class="cchip">Total units: ${tQ}</span><span class="cchip">GWP: ${(tQ*EPD.gwp).toFixed(1)} kg CO₂e</span><span class="cchip">Cost: €${(tQ*EPD.cost).toLocaleString()}</span><span class="cchip">Install: ${(tQ*EPD.install).toFixed(0)}h</span><span class="cchip">Energy: ${(tQ*EPD.energy/1000).toFixed(1)} GJ</span>`;
+  }
+};
+function switchTab(k,el){currentTab=k;document.querySelectorAll('.ctab').forEach(t=>t.classList.remove('on'));if(el)el.classList.add('on');document.getElementById('ctxv').innerHTML=ctxC[k]();}
+function switchTabSilent(k){document.getElementById('ctxv').innerHTML=ctxC[k]();}
+document.getElementById('ctxv').innerHTML=ctxC.bim();
+renderBIM();
+
+// ══════════════════════════════════════════
+// AI AGENT
+// ══════════════════════════════════════════
+const hist=[];
+function sysPrompt(){
+  const tQ=bimData.reduce((a,b)=>a+b.qty,0);
+  return`You are Myra, an expert AI embedded in a smart mycelium composite BIM panel. You are aware of:
+
+1. REGENERATIVE DESIGN — living-systems thinking, circular economy, biophilic design, carbon sequestration. Frameworks: Living Building Challenge, BREEAM Outstanding, LEED Platinum, Cradle to Cradle.
+
+2. THIS PANEL'S EPD/LCA:
+   - 1000×1000×80mm | ~9.6 kg | Pleurotus eryngii on hemp hurd/straw/oak sawdust (agroforestry bio-waste)
+   - GWP A1–C4: −3.4 kg CO₂e/unit (carbon negative) | Biogenic: −5.1 kg CO₂e/unit
+   - Embodied energy: 18.4 MJ | Water: 62 L | Acidification: 0.004 mol H⁺e
+   - End of life: 100% compostable | Thermal λ=0.06 | Acoustic Rw=0.7 | Fire Class B
+   - EPD: AGF-MYC-2024-EU | ISO 14044 / EN 15804 | €85/unit | 0.25 hr install/unit
+
+3. CURRENT BIM TRACKING (${bimData.length} model${bimData.length!==1?'s':''}, ${tQ} total instances):
+${bimSum()}
+
+4. AGGREGATE IMPACT:
+   - Total GWP: ${(tQ*EPD.gwp).toFixed(1)} kg CO₂e | Total cost: €${(tQ*EPD.cost).toLocaleString()} | Install: ${(tQ*EPD.install).toFixed(0)}h
+
+Be concise, specific, quantified. Use markdown. Reference actual EPD values and BIM data in your answers.`;
+}
+
+function updateAgent(){
+  // Silently refresh agent context when BIM data changes
+  // Next message will include updated system prompt automatically
+}
+
+async function callAgent(msg){
+  hist.push({role:'user',content:msg});
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:sysPrompt(),messages:hist})});
+  const d=await r.json();
+  const txt=d.content?.map(b=>b.text||'').join('')||'Agent unavailable.';
+  hist.push({role:'assistant',content:txt});
+  return txt;
+}
+function appendMsg(role,text,time){
+  const msgs=document.getElementById('msgs');
+  document.getElementById('typing-ind')?.remove();
+  const d=document.createElement('div');d.className='msg '+role;
+  const html=text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/^### (.+)$/gm,'<span style="color:var(--myc);font-size:9.5px">$1</span>').replace(/^## (.+)$/gm,'<span style="color:var(--acc);font-size:10px">$1</span>').replace(/^- (.+)$/gm,'· $1').replace(/\n/g,'<br>');
+  d.innerHTML=`<div class="bub">${html}</div><div class="mmeta">${time||new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>`;
+  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+}
+function showTyping(){const msgs=document.getElementById('msgs');const d=document.createElement('div');d.className='msg a';d.id='typing-ind';d.innerHTML=`<div class="tdots"><div class="td"></div><div class="td"></div><div class="td"></div></div>`;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;}
+async function sendMsg(){const ti=document.getElementById('ti');const txt=ti.value.trim();if(!txt)return;ti.value='';document.getElementById('sb').disabled=true;appendMsg('u',txt);showTyping();try{const r=await callAgent(txt);appendMsg('a',r);}catch(e){appendMsg('a','⚠ Agent unavailable — '+e.message);}document.getElementById('sb').disabled=false;ti.focus();}
+function sq(t){document.getElementById('ti').value=t;sendMsg();}
+document.getElementById('ti').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+
+setTimeout(()=>{
+  appendMsg('a',`**Hello — I'm Myra, your BIM Impact Agent.**\n\nI'm ready to track your mycelium panel instances. Currently **no models are synced** — click **+ Sync from Rhino / Revit** in the top bar to add your Rhino file with 2 units, and I'll immediately calculate the carbon, cost and schedule impact.\n\nFor automatic live tracking when you copy panels in Rhino, use the Grasshopper sync script — instructions are in the sync panel.`,'09:00');
+},900);
+
+// ══════════════════════════════════════════
+// EXPORTS
+// ══════════════════════════════════════════
+function dl(name,content,type='text/plain'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();notif('Exported: '+name);}
+
+function exportIFC(){dl('MYC-PANEL-001.ifc',`ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('MyceliumPanel Smart BIM Object'),'2;1');\nFILE_NAME('MYC-PANEL-001.ifc','${new Date().toISOString()}',('BIM Agent'),('MyceliumPanel'),'IFC2X3','','');\nFILE_SCHEMA(('IFC2X3'));\nENDSEC;\nDATA;\n/* MYCELIUM PANEL 1000x1000x80mm | GWP: -3.4 kg CO2e | Biogenic: -5.1 | Energy: 18.4 MJ | EPD: AGF-MYC-2024-EU */\n#1=IFCPROJECT('MYC001',#2,'MyceliumPanel BIM',$,$,$,$,(#20),#30);\n#2=IFCOWNERHISTORY(#3,#4,$,.ADDED.,$,$,$,0);\n#3=IFCPERSONANDORGANIZATION(#5,#6,$);\n#4=IFCAPPLICATION(#6,'1.0','MyceliumPanel BIM','MYC-BIM');\n#5=IFCPERSON($,'MyraAgent','BIM',$,$,$,$,$);\n#6=IFCORGANIZATION($,'MyceliumPanel','Smart BIM',$,$);\n#20=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-5,#21,$);\n#21=IFCAXIS2PLACEMENT3D(#22,$,$);\n#22=IFCCARTESIANPOINT((0.,0.,0.));\n#30=IFCUNITASSIGNMENT((#31,#32,#33));\n#31=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\n#32=IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.);\n#33=IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.);\n#200=IFCPRODUCTDEFINITIONSHAPE($,$,(#210));\n#210=IFCSHAPEREPRESENTATION(#20,'Body','SweptSolid',(#220));\n#220=IFCEXTRUDEDAREASOLID(#221,#222,#223,0.08);\n#221=IFCRECTANGLEPROFILEDEF(.AREA.,$,#224,1.0,1.0);\n#222=IFCAXIS2PLACEMENT3D(#22,$,$);\n#223=IFCDIRECTION((0.,0.,1.));\n#224=IFCAXIS2PLACEMENT2D(#225,$);\n#225=IFCCARTESIANPOINT((0.,0.));\n#300=IFCWALL('MYC-PANEL-001',#2,'MyceliumPanel_001','Mycelium composite panel 1000x1000x80mm',$,#301,#200,$,.NOTDEFINED.);\n#301=IFCLOCALPLACEMENT($,#302);\n#302=IFCAXIS2PLACEMENT3D(#22,$,$);\n#400=IFCPROPERTYSET('MYC-EPD',#2,'Pset_EnvironmentalImpactValues',$,(#401,#402,#403,#404,#405,#406,#407,#408,#409));\n#401=IFCPROPERTYSINGLEVALUE('GWP_A1_to_C4',$,IFCREAL(-3.4),$);\n#402=IFCPROPERTYSINGLEVALUE('GWP_BiogenicCarbon',$,IFCREAL(-5.1),$);\n#403=IFCPROPERTYSINGLEVALUE('EmbodiedEnergy_MJ',$,IFCREAL(18.4),$);\n#404=IFCPROPERTYSINGLEVALUE('WaterConsumption_L',$,IFCREAL(62.0),$);\n#405=IFCPROPERTYSINGLEVALUE('EPD_Reference',$,IFCTEXT('AGF-MYC-2024-EU'),$);\n#406=IFCPROPERTYSINGLEVALUE('Standard',$,IFCTEXT('ISO 14044 / EN 15804'),$);\n#407=IFCPROPERTYSINGLEVALUE('Substrate',$,IFCTEXT('Hemp hurd 60% Straw 25% Oak sawdust 15%'),$);\n#408=IFCPROPERTYSINGLEVALUE('Species',$,IFCTEXT('Pleurotus eryngii'),$);\n#409=IFCPROPERTYSINGLEVALUE('EndOfLife',$,IFCTEXT('100% Compostable Biodegradable'),$);\n#500=IFCPROPERTYSET('MYC-PERF',#2,'Pset_MaterialPerformance',$,(#501,#502,#503,#504));\n#501=IFCPROPERTYSINGLEVALUE('ThermalConductivity_W_mK',$,IFCREAL(0.06),$);\n#502=IFCPROPERTYSINGLEVALUE('AcousticRating_Rw',$,IFCREAL(0.7),$);\n#503=IFCPROPERTYSINGLEVALUE('FireClassification',$,IFCTEXT('Class B EN 13501'),$);\n#504=IFCPROPERTYSINGLEVALUE('UnitCost_EUR',$,IFCREAL(85.0),$);\n#600=IFCRELDEFINESBYPROPERTIES('REL-EPD',#2,$,$,(#300),#400);\n#601=IFCRELDEFINESBYPROPERTIES('REL-PERF',#2,$,$,(#300),#500);\nENDSEC;\nEND-ISO-10303-21;`);}
+
+function exportOBJ(){const hw=0.5,hh=0.5,hd=0.04;dl('MYC-PANEL-001.obj',`# MyceliumPanel OBJ 1000x1000x80mm (metres)\n# EPD GWP -3.4 kg CO2e | Biogenic -5.1 | Energy 18.4MJ | Pleurotus eryngii\nmtllib MYC-PANEL-001.mtl\no MyceliumPanel_1000x1000x80\nv -${hw} -${hh} -${hd}\nv  ${hw} -${hh} -${hd}\nv  ${hw}  ${hh} -${hd}\nv -${hw}  ${hh} -${hd}\nv -${hw} -${hh}  ${hd}\nv  ${hw} -${hh}  ${hd}\nv  ${hw}  ${hh}  ${hd}\nv -${hw}  ${hh}  ${hd}\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\nvn 0 0 -1\nvn 0 0 1\nvn 0 -1 0\nvn 0 1 0\nvn -1 0 0\nvn 1 0 0\nusemtl MyceliumPanel\nf 1/1/1 2/2/1 3/3/1\nf 1/1/1 3/3/1 4/4/1\nf 5/1/2 7/3/2 6/2/2\nf 5/1/2 8/4/2 7/3/2\nf 1/1/3 6/2/3 2/3/3\nf 1/1/3 5/4/3 6/2/3\nf 4/1/4 3/2/4 7/3/4\nf 4/1/4 7/3/4 8/4/4\nf 1/1/5 4/2/5 8/3/5\nf 1/1/5 8/3/5 5/4/5\nf 2/1/6 6/2/6 7/3/6\nf 2/1/6 7/3/6 3/4/6`);setTimeout(()=>dl('MYC-PANEL-001.mtl','newmtl MyceliumPanel\nKa 0.44 0.33 0.20\nKd 0.69 0.52 0.30\nKs 0.04 0.04 0.03\nNs 6.0\nd 1.0\nillum 2'),350);}
+
+function exportJSON(){dl('MYC-PANEL-SmartData.json',JSON.stringify({id:'MYC-PANEL-001',type:'MyceliumCompositePanel',version:'1.0.0',generated:new Date().toISOString(),geometry:{height_mm:1000,width_mm:1000,depth_mm:80,volume_m3:0.08},material:{species:'Pleurotus eryngii',substrate:{hemp_hurd:'60%',straw:'25%',oak_sawdust:'15%'},origin:'Agroforestry bio-waste',density_kg_m3:120},epd:{reference:'AGF-MYC-2024-EU',standard:'ISO 14044 / EN 15804',gwp_a1_c4_kgCO2e:-3.4,biogenic_carbon_kgCO2e:-5.1,embodied_energy_MJ:18.4,water_L:62,acidification_molHe:0.004},performance:{thermal_conductivity_W_mK:0.06,acoustic_Rw:0.7,fire_class:'Class B EN 13501',voc:'none',end_of_life:'compostable'},cost:{unit_EUR:85,install_hr_per_unit:0.25},bim_tracking:bimData.map(d=>({...d,impact:imp(d.qty)}))},null,2),'application/json');}
+
+function exportCSV(){let csv='BIM Model,Zone,Phase,Qty,GWP kg CO2e,Biogenic CO2e,Energy GJ,Water m3,Cost EUR,Install hrs,Source\n';bimData.forEach(d=>{const m=imp(d.qty);csv+=`"${d.model}","${d.zone}",${d.phase},${d.qty},${m.gwp},${m.bio},${m.en},${m.wat},${d.qty*EPD.cost},${m.hrs},${d.source}\n`;});dl('MYC-Impact-Schedule.csv',csv,'text/csv');}
+
+// ══════════════════════════════════════════
+// GRASSHOPPER / DYNAMO SCRIPT DOWNLOADS
+// ══════════════════════════════════════════
+function downloadGH(){
+  dl('rhino_tracker_README.txt',`RHINO GRASSHOPPER LIVE SYNC SCRIPT
+=====================================
+This Python script runs inside a GHPython component in Grasshopper.
+It counts all objects on the "MyceliumPanel" layer in the active Rhino document
+and POSTs the count to your Supabase database.
+
+SETUP:
+1. Open Grasshopper in Rhino (type "Grasshopper" in Rhino command line)
+2. Add a GHPython component (double-click canvas → search "Python")
+3. Add a "Timer" component and connect to the GHPython trigger input
+4. Paste the code from rhino_tracker_code.py into the GHPython component
+5. Set your SUPABASE_URL and SUPABASE_KEY constants at the top of the script
+6. Replace with your actual project file name
+
+The script fires every 10 seconds (controlled by the Timer component interval).
+When the panel count changes, it sends a POST request to Supabase.
+The dashboard polls Supabase every 5 seconds and updates automatically.
+
+LAYER SETUP IN RHINO:
+- Create a layer called exactly: MyceliumPanel
+- Place all your mycelium panel instances on this layer
+- The script counts all objects on this layer
+
+ALTERNATIVE (no Supabase):
+If you don't want to set up Supabase, just use the manual sync button
+on the dashboard — enter your filename and instance count by hand.
+`,'text/plain');
+  setTimeout(()=>dl('rhino_tracker_code.py',`# ============================================================
+# MYCELIUM PANEL TRACKER — GHPython component code
+# Paste this into a GHPython component in Grasshopper
+# Connect a Timer component to trigger re-execution
+# ============================================================
+import rhinoscriptsyntax as rs
+import scriptcontext as sc
+import Rhino
+import json
+import System.Net
+import System.Text
+
+# ── CONFIGURE THESE ──────────────────────────────────────────
+SUPABASE_URL = "https://YOUR_PROJECT.supabase.co"
+SUPABASE_KEY = "YOUR_ANON_KEY"
+PROJECT_FILE = "MyceliumProject.3dm"   # your Rhino filename
+ZONE         = "Unspecified"            # update as needed
+PHASE        = "CD"                     # SD / DD / CD / CA
+LAYER_NAME   = "MyceliumPanel"          # layer your panels are on
+# ─────────────────────────────────────────────────────────────
+
+def count_panels():
+    """Count all objects on the MyceliumPanel layer."""
+    layer_index = sc.doc.Layers.FindByFullPath(LAYER_NAME, True)
+    if layer_index < 0:
+        return 0
+    count = 0
+    for obj in sc.doc.Objects:
+        if obj.Attributes.LayerIndex == layer_index and not obj.IsDeleted:
+            count += 1
+    return count
+
+def post_to_supabase(qty):
+    """Upsert the instance count to Supabase via REST API."""
+    url = SUPABASE_URL + "/rest/v1/bim_instances"
+    payload = json.dumps({
+        "model": PROJECT_FILE,
+        "zone":  ZONE,
+        "qty":   qty,
+        "phase": PHASE,
+        "source": "rhino-grasshopper"
+    })
+    try:
+        client = System.Net.WebClient()
+        client.Headers.Add("Content-Type", "application/json")
+        client.Headers.Add("apikey", SUPABASE_KEY)
+        client.Headers.Add("Authorization", "Bearer " + SUPABASE_KEY)
+        client.Headers.Add("Prefer", "resolution=merge-duplicates")
+        data = System.Text.Encoding.UTF8.GetBytes(payload)
+        client.UploadData(url, "POST", data)
+        return True
+    except Exception as e:
+        print("Supabase error:", str(e))
+        return False
+
+# ── MAIN ─────────────────────────────────────────────────────
+qty = count_panels()
+
+# Only POST if count has changed (store in sticky dict)
+prev_key = "myc_prev_qty_" + PROJECT_FILE
+prev_qty = sc.sticky.get(prev_key, -1)
+
+if qty != prev_qty:
+    success = post_to_supabase(qty)
+    if success:
+        sc.sticky[prev_key] = qty
+        print("Synced: {} panels → Supabase".format(qty))
+    else:
+        print("Sync failed — check credentials")
+else:
+    print("No change: {} panels on '{}' layer".format(qty, LAYER_NAME))
+
+# Output to Grasshopper
+panel_count = qty
+status = "Synced: {} panels".format(qty) if qty != prev_qty else "Watching: {} panels".format(qty)
+`,'text/plain'),400);
+}
+
+function downloadPY(){
+  dl('rhino_tracker_code.py',`# ============================================================
+# MYCELIUM PANEL TRACKER — GHPython component code
+# Paste this into a GHPython component in Grasshopper
+# Connect a Timer component to trigger re-execution
+# ============================================================
+import rhinoscriptsyntax as rs
+import scriptcontext as sc
+import Rhino
+import json
+import System.Net
+import System.Text
+
+# ── CONFIGURE THESE ──────────────────────────────────────────
+SUPABASE_URL = "https://YOUR_PROJECT.supabase.co"
+SUPABASE_KEY = "YOUR_ANON_KEY"
+PROJECT_FILE = "MyceliumProject.3dm"
+ZONE         = "Unspecified"
+PHASE        = "CD"
+LAYER_NAME   = "MyceliumPanel"
+# ─────────────────────────────────────────────────────────────
+
+def count_panels():
+    layer_index = sc.doc.Layers.FindByFullPath(LAYER_NAME, True)
+    if layer_index < 0:
+        return 0
+    count = 0
+    for obj in sc.doc.Objects:
+        if obj.Attributes.LayerIndex == layer_index and not obj.IsDeleted:
+            count += 1
+    return count
+
+def post_to_supabase(qty):
+    url = SUPABASE_URL + "/rest/v1/bim_instances"
+    payload = json.dumps({"model":PROJECT_FILE,"zone":ZONE,"qty":qty,"phase":PHASE,"source":"rhino-grasshopper"})
+    try:
+        client = System.Net.WebClient()
+        client.Headers.Add("Content-Type","application/json")
+        client.Headers.Add("apikey",SUPABASE_KEY)
+        client.Headers.Add("Authorization","Bearer "+SUPABASE_KEY)
+        client.Headers.Add("Prefer","resolution=merge-duplicates")
+        data = System.Text.Encoding.UTF8.GetBytes(payload)
+        client.UploadData(url,"POST",data)
+        return True
+    except Exception as e:
+        print("Error:",str(e))
+        return False
+
+qty = count_panels()
+prev_key = "myc_prev_" + PROJECT_FILE
+prev_qty = sc.sticky.get(prev_key,-1)
+if qty != prev_qty:
+    if post_to_supabase(qty):
+        sc.sticky[prev_key]=qty
+        print("Synced:",qty,"panels")
+else:
+    print("Watching:",qty,"panels")
+panel_count=qty
+`,'text/plain');}
+
+function downloadDynamo(){
+  dl('mycelium_tracker_README.txt',`REVIT DYNAMO TRACKER SCRIPT
+============================
+To track MyceliumPanel family instances from Revit to the dashboard:
+
+1. Open Dynamo in Revit (Manage → Visual Programming → Dynamo)
+2. Create a new script with these nodes:
+   - "All Elements of Family Type" node → select MyceliumPanel type
+   - "List.Count" node → connect to get instance count
+   - "Python Script" node → paste the POST code below
+   - "String" node → your project name
+
+3. Paste this into the Python Script node:
+
+import clr
+import System.Net
+import System.Text
+import json
+
+SUPABASE_URL = "https://YOUR_PROJECT.supabase.co"
+SUPABASE_KEY = "YOUR_ANON_KEY"
+
+qty   = IN[0]   # count from List.Count node
+model = IN[1]   # project name string
+
+payload = json.dumps({
+    "model": model,
+    "zone":  "Revit Model",
+    "qty":   qty,
+    "phase": "CD",
+    "source": "revit-dynamo"
+})
+
+client = System.Net.WebClient()
+client.Headers.Add("Content-Type","application/json")
+client.Headers.Add("apikey", SUPABASE_KEY)
+client.Headers.Add("Authorization","Bearer "+SUPABASE_KEY)
+client.Headers.Add("Prefer","resolution=merge-duplicates")
+data = System.Text.Encoding.UTF8.GetBytes(payload)
+client.UploadData(SUPABASE_URL+"/rest/v1/bim_instances","POST",data)
+OUT = "Synced: "+str(qty)+" panels"
+
+4. Save and run via Dynamo Player for one-click sync
+5. Or use Dynamo's "Automatic" run mode to sync on every change
+`,'text/plain');}
+
+// ══════════════════════════════════════════
+// MODAL HELPERS
+// ══════════════════════════════════════════
+function openSync(){document.getElementById('syncModal').classList.add('show');}
+function openHosting(){document.getElementById('hostModal').classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal('syncModal');closeModal('hostModal');}});
+
+function notif(msg){const n=document.createElement('div');n.className='notif';n.textContent=msg;document.body.appendChild(n);setTimeout(()=>n.remove(),2800);}
+</script>
+</body>
+</html>
