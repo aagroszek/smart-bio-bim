@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyceliumPanel BIM — Smart Object</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400;500&display=swap');
+:root{--soil:#1a1208;--bark:#2d1f0e;--moss:#3d4a2e;--lichen:#7a8c5e;--myc:#c8b99a;--spore:#e8dcc8;--cream:#f5efe3;--neg:#5a9e6e;--pos:#c46a3a;--acc:#8fbc8f}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--soil);color:var(--spore);font-family:'DM Mono',monospace;font-size:11px}
+#topbar{height:40px;background:var(--bark);border-bottom:1px solid #3a2a15;display:flex;align-items:center;padding:0 14px;gap:12px;flex-shrink:0;z-index:200}
+.logo{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:300;letter-spacing:3px;color:var(--myc);white-space:nowrap}
+.logo em{color:var(--acc);font-style:italic}
+.badge{background:var(--moss);border:1px solid var(--lichen);border-radius:2px;padding:2px 7px;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc);white-space:nowrap}
+.badge.live{border-color:var(--neg);color:var(--neg)}
+#counters{margin-left:auto;display:flex;gap:14px;align-items:center;font-size:9px;color:var(--myc)}
+#counters strong{color:var(--acc);font-size:12px}
+.hbtn{background:rgba(90,158,110,.12);border:1px solid rgba(90,158,110,.35);color:var(--acc);padding:3px 9px;border-radius:3px;font-family:'DM Mono',monospace;font-size:8px;cursor:pointer;letter-spacing:1px}
+.hbtn:hover{background:rgba(90,158,110,.25)}
+#layout{display:flex;height:calc(100vh - 40px)}
+.side{width:296px;flex-shrink:0;background:var(--bark);display:flex;flex-direction:column;overflow:hidden}
+.side.left{border-right:1px solid #3a2a15}
+.side.right{border-left:1px solid #3a2a15}
+.sec{border-bottom:1px solid #3a2a15;padding:11px 13px}
+.sec-lbl{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:var(--lichen);margin-bottom:8px}
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.sp{background:rgba(255,255,255,.04);border:1px solid #3a2a15;border-radius:3px;padding:6px 8px}
+.sp-v{font-size:15px;color:var(--myc)}
+.sp-u{font-size:8px;color:var(--lichen)}
+.sp-l{font-size:7.5px;color:var(--lichen);letter-spacing:1px;text-transform:uppercase;margin-top:1px}
+.irow{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.ilbl{width:90px;font-size:8.5px;color:var(--myc);flex-shrink:0}
+.btrack{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.bfill{height:100%;border-radius:3px}
+.bfill.n{background:linear-gradient(90deg,#5a9e6e,#8fbc8f)}
+.bfill.m{background:linear-gradient(90deg,#7a8c5e,#a0b080)}
+.ival{font-size:8.5px;width:72px;text-align:right;flex-shrink:0}
+.lcwrap{padding-bottom:18px}
+.lcbars{display:flex;gap:3px;align-items:flex-end;height:50px}
+.lcb{flex:1;border-radius:2px 2px 0 0;min-height:4px;position:relative;cursor:pointer;transition:filter .2s}
+.lcb:hover{filter:brightness(1.4)}
+.lcb::after{content:attr(data-l);position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:7px;color:var(--lichen);white-space:nowrap}
+.export-row{display:flex;gap:5px;flex-wrap:wrap}
+.ebtn{flex:1;min-width:55px;background:rgba(255,255,255,.04);border:1px solid #3a2a15;color:var(--myc);padding:6px 4px;border-radius:3px;font-family:'DM Mono',monospace;font-size:7.5px;cursor:pointer;transition:all .2s;text-align:center}
+.ebtn:hover{border-color:var(--acc);color:var(--acc);background:rgba(143,188,143,.08)}
+.ebtn .fmt{font-size:10px;display:block;color:var(--acc);margin-bottom:2px}
+.blist-wrap{flex:1;overflow-y:auto;padding:10px 12px}
+.blist-wrap::-webkit-scrollbar{width:3px}
+.blist-wrap::-webkit-scrollbar-thumb{background:var(--moss);border-radius:2px}
+.bi{background:rgba(255,255,255,.03);border:1px solid #3a2a15;border-radius:4px;padding:8px 10px;margin-bottom:5px;cursor:pointer;transition:all .2s;position:relative}
+.bi:hover,.bi.on{border-color:var(--lichen);background:rgba(143,188,143,.06)}
+.bi.on::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--acc);border-radius:4px 0 0 4px}
+.bi-name{color:var(--myc);font-size:9.5px;margin-bottom:3px}
+.bi-meta{font-size:7.5px;color:var(--lichen);display:flex;justify-content:space-between}
+.bi-imp{font-size:8.5px;margin-top:4px;display:flex;gap:8px}
+.bi-imp .g{color:var(--neg)}
+.addbtn{width:100%;background:transparent;border:1px dashed var(--moss);color:var(--lichen);padding:7px;cursor:pointer;border-radius:4px;font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;transition:all .2s;margin-top:4px}
+.addbtn:hover{border-color:var(--acc);color:var(--acc)}
+/* VIEWER */
+#viewer{flex:1;position:relative;overflow:hidden}
+#three-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;background:#0a0805}
+.vov{position:absolute;pointer-events:none}
+#vid{top:14px;left:14px;background:rgba(10,8,4,.9);border:1px solid #3a2a15;border-radius:4px;padding:8px 12px;font-size:8.5px;color:var(--lichen)}
+#vid .pid{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--myc);letter-spacing:2px}
+#vid .hash{font-size:7.5px;color:#4a3820;margin-top:3px}
+#gwpr{top:14px;right:14px;text-align:right}
+#gwpr .big{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:300;color:var(--neg);line-height:1}
+#gwpr .unit{font-size:8.5px;color:var(--lichen)}
+#gwpr .lbl{font-size:7.5px;color:#5a6e45;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+#vtags{bottom:56px;left:14px;background:rgba(10,8,4,.9);border:1px solid #3a2a15;border-radius:4px;padding:9px 13px;max-width:260px}
+#vtags .tit{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--myc);margin-bottom:6px;font-style:italic}
+.trow{display:flex;flex-wrap:wrap;gap:3px}
+.tag{background:rgba(90,158,110,.15);border:1px solid rgba(90,158,110,.3);color:var(--acc);padding:2px 6px;border-radius:2px;font-size:7.5px;letter-spacing:.8px}
+#vctrl{bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:6px;pointer-events:all}
+.cb{background:rgba(10,8,4,.9);border:1px solid #3a2a15;color:var(--lichen);padding:5px 11px;cursor:pointer;border-radius:3px;font-family:'DM Mono',monospace;font-size:8.5px;transition:all .2s}
+.cb:hover,.cb.on{border-color:var(--acc);color:var(--acc)}
+#loadmsg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0805;z-index:10;transition:opacity .6s}
+#loadmsg .ico{font-size:44px;margin-bottom:12px;animation:spin 4s linear infinite}
+#loadmsg .txt{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--myc);letter-spacing:3px}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+/* AGENT */
+#aghdr{padding:11px 13px;border-bottom:1px solid #3a2a15;display:flex;align-items:center;gap:10px}
+.ava{width:30px;height:30px;border-radius:50%;background:var(--moss);border:1px solid var(--lichen);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;position:relative}
+.pulse{position:absolute;width:8px;height:8px;background:var(--neg);border-radius:50%;bottom:-1px;right:-1px;animation:p 2s infinite}
+@keyframes p{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.agname{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--myc)}
+.agstat{font-size:7.5px;color:var(--neg);letter-spacing:1px}
+#ctabs{display:flex;border-bottom:1px solid #3a2a15;padding:0 6px}
+.ctab{padding:5px 9px;font-size:7.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lichen);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.ctab.on,.ctab:hover{color:var(--acc);border-bottom-color:var(--acc)}
+#ctxv{padding:9px 12px;border-bottom:1px solid #3a2a15;font-size:8px;color:var(--lichen);line-height:1.6;max-height:68px;overflow-y:auto}
+.cchip{display:inline-block;background:rgba(90,158,110,.1);border:1px solid rgba(90,158,110,.2);color:#7ab890;padding:1px 5px;border-radius:2px;margin:1px;font-size:7px}
+#msgs{flex:1;overflow-y:auto;padding:11px;display:flex;flex-direction:column;gap:9px}
+#msgs::-webkit-scrollbar{width:3px}
+#msgs::-webkit-scrollbar-thumb{background:var(--moss);border-radius:2px}
+.msg{max-width:92%;animation:fu .3s ease}
+@keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.msg.u{align-self:flex-end}.msg.a{align-self:flex-start}
+.bub{border-radius:6px;padding:8px 10px;font-size:9.5px;line-height:1.65}
+.msg.u .bub{background:rgba(143,188,143,.12);border:1px solid rgba(143,188,143,.25);color:var(--cream)}
+.msg.a .bub{background:rgba(255,255,255,.04);border:1px solid #3a2a15;color:var(--spore)}
+.mmeta{font-size:7px;color:var(--lichen);margin-top:3px}
+.msg.u .mmeta{text-align:right}
+.tdots{display:flex;gap:4px;align-items:center;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid #3a2a15;border-radius:6px;width:fit-content}
+.td{width:4px;height:4px;background:var(--lichen);border-radius:50%;animation:tb 1.2s infinite}
+.td:nth-child(2){animation-delay:.2s}.td:nth-child(3){animation-delay:.4s}
+@keyframes tb{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+#cinp{padding:9px 11px;border-top:1px solid #3a2a15}
+.qps{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px}
+.qp{background:transparent;border:1px solid #3a2a15;color:var(--lichen);padding:3px 7px;border-radius:3px;font-family:'DM Mono',monospace;font-size:7.5px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.qp:hover{border-color:var(--lichen);color:var(--myc)}
+.inrow{display:flex;gap:6px;align-items:flex-end}
+#ti{flex:1;background:rgba(255,255,255,.04);border:1px solid #3a2a15;border-radius:4px;padding:7px 10px;color:var(--spore);font-family:'DM Mono',monospace;font-size:9.5px;resize:none;min-height:34px;max-height:80px;outline:none;line-height:1.5;transition:border-color .2s}
+#ti:focus{border-color:var(--lichen)}
+#ti::placeholder{color:#4a3a20}
+#sb{background:var(--moss);border:1px solid var(--lichen);color:var(--acc);padding:7px 12px;border-radius:4px;cursor:pointer;font-family:'DM Mono',monospace;font-size:9.5px;height:34px;transition:all .2s;white-space:nowrap}
+#sb:hover{background:rgba(143,188,143,.2);border-color:var(--acc)}
+#sb:disabled{opacity:.4;cursor:not-allowed}
+/* HOSTING MODAL */
+#hmodal{position:fixed;inset:0;background:rgba(8,6,3,.93);z-index:500;display:none;align-items:center;justify-content:center}
+#hmodal.show{display:flex}
+.hbox{background:var(--bark);border:1px solid var(--lichen);border-radius:8px;max-width:560px;width:92%;padding:28px 28px 22px;position:relative;max-height:90vh;overflow-y:auto}
+.hbox h2{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--myc);margin-bottom:3px}
+.hbox .sub{font-size:8px;color:var(--lichen);letter-spacing:2px;text-transform:uppercase;margin-bottom:18px}
+.hrow{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start}
+.hico{font-size:18px;flex-shrink:0;margin-top:1px}
+.htxt strong{display:block;color:var(--acc);font-size:9.5px;margin-bottom:3px}
+.htxt p{font-size:8.5px;color:var(--spore);line-height:1.75}
+.hclose{position:absolute;top:12px;right:14px;background:transparent;border:1px solid #3a2a15;color:var(--lichen);padding:4px 10px;cursor:pointer;border-radius:3px;font-family:'DM Mono',monospace;font-size:8px}
+.hclose:hover{border-color:var(--acc);color:var(--acc)}
+.hdiv{border:none;border-top:1px solid #3a2a15;margin:14px 0}
+.hfree{display:inline-block;background:rgba(90,158,110,.15);border:1px solid var(--neg);color:var(--neg);padding:3px 10px;border-radius:3px;font-size:8.5px;letter-spacing:1px;margin-bottom:8px}
+/* NOTIF */
+.notif{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--moss);border:1px solid var(--acc);color:var(--cream);padding:7px 16px;border-radius:4px;font-size:9.5px;z-index:999;animation:np .3s ease;pointer-events:none}
+@keyframes np{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo">Mycelium<em>Panel</em> BIM</div>
+  <span class="badge">EPD Embedded</span>
+  <span class="badge">ISO 14044 LCA</span>
+  <span class="badge live">● Agent Live</span>
+  <div id="counters">
+    <span>BIM Models: <strong id="mc">3</strong></span>
+    <span>Instances: <strong id="ic">0</strong></span>
+    <span>Net Carbon: <strong id="nc" style="color:var(--neg)">— kg CO₂e</strong></span>
+    <button class="hbtn" onclick="document.getElementById('hmodal').classList.add('show')">? Hosting &amp; Data</button>
+  </div>
+</div>
+
+<!-- HOSTING MODAL -->
+<div id="hmodal">
+  <div class="hbox">
+    <button class="hclose" onclick="document.getElementById('hmodal').classList.remove('show')">✕ Close</button>
+    <h2>Where is this hosted?</h2>
+    <div class="sub">Data flow, storage &amp; cost breakdown</div>
+    <div class="hrow">
+      <div class="hico">🌐</div>
+      <div class="htxt">
+        <strong>The dashboard — runs entirely in your browser (no server)</strong>
+        <p>This is a single self-contained HTML file. It runs locally in any browser with no backend, no database, and no login. Open it from your desktop, or host it for free on Netlify, Vercel, GitHub Pages, or Cloudflare Pages. BIM instance data lives in JavaScript memory — it resets on page refresh unless you export it (CSV/JSON buttons available).</p>
+      </div>
+    </div>
+    <div class="hrow">
+      <div class="hico">🤖</div>
+      <div class="htxt">
+        <strong>Myra AI Agent — Anthropic API (Claude Sonnet)</strong>
+        <p>Chat messages are sent to <code style="color:var(--acc)">api.anthropic.com/v1/messages</code>. No conversation is stored between sessions — your browser holds the chat history only while the tab is open. API calls use your Anthropic account's pay-as-you-go quota. At ~$3/M input + ~$15/M output tokens, a full working day of queries costs under $0.05.</p>
+      </div>
+    </div>
+    <div class="hrow">
+      <div class="hico">📦</div>
+      <div class="htxt">
+        <strong>BIM tracking data — currently in-memory only</strong>
+        <p>Instance counts, model names, and carbon totals are stored in JS variables. For persistent cross-session tracking and live sync across multiple users (e.g. live data visible from Revit/Rhino), connect to a free-tier database: <strong style="color:var(--myc)">Supabase</strong> (500MB free, REST API), <strong style="color:var(--myc)">Airtable</strong> (free tier), or a simple <strong style="color:var(--myc)">JSON REST API on Render</strong>. That would also enable Revit dynamo scripts or Rhino Grasshopper components to push placement events and pull live impact totals.</p>
+      </div>
+    </div>
+    <div class="hrow">
+      <div class="hico">📐</div>
+      <div class="htxt">
+        <strong>Exporting to Revit / Rhino</strong>
+        <p>Use the <strong style="color:var(--myc)">IFC export</strong> to load directly into Revit, ArchiCAD, or any IFC-compliant BIM tool — all EPD properties are embedded as IFC Psets. Use the <strong style="color:var(--myc)">OBJ export</strong> for Rhino, 3ds Max, Blender, or SketchUp. The <strong style="color:var(--myc)">JSON export</strong> contains the full smart data payload and can be consumed by Revit Dynamo scripts or Grasshopper via the <code style="color:var(--acc)">HttpClient</code> component to pull live impact data back into this dashboard.</p>
+      </div>
+    </div>
+    <hr class="hdiv">
+    <span class="hfree">✓ Free to run locally — zero infrastructure needed</span>
+    <p style="font-size:8.5px;color:var(--lichen);line-height:1.8;margin-top:6px">
+      <strong style="color:var(--myc)">Free hosting stack:</strong> Netlify / GitHub Pages / Cloudflare Pages (all free for static HTML).<br>
+      <strong style="color:var(--myc)">AI cost:</strong> Pay-as-you-go Anthropic API — no subscription. A full day of agent queries ≈ $0.02–0.10.<br>
+      <strong style="color:var(--myc)">Persistent tracking (optional upgrade):</strong> Supabase free tier is sufficient for hundreds of BIM projects.
+    </p>
+  </div>
+</div>
+
+<div id="layout">
+  <!-- LEFT PANEL -->
+  <div class="side left">
+    <div class="sec">
+      <div class="sec-lbl">Panel Specifications</div>
+      <div class="specs">
+        <div class="sp"><div class="sp-v">1000</div><div class="sp-u">mm × 1000 mm</div><div class="sp-l">H × W</div></div>
+        <div class="sp"><div class="sp-v">80</div><div class="sp-u">mm depth</div><div class="sp-l">Depth</div></div>
+        <div class="sp"><div class="sp-v">~9.6</div><div class="sp-u">kg</div><div class="sp-l">Unit Mass</div></div>
+        <div class="sp"><div class="sp-v">0.08</div><div class="sp-u">m³</div><div class="sp-l">Volume</div></div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-lbl">EPD Impact / Unit (Estimated)</div>
+      <div class="irow"><span class="ilbl">GWP A1–C4</span><div class="btrack"><div class="bfill n" style="width:88%"></div></div><span class="ival" style="color:var(--neg)">−3.4 kg CO₂e</span></div>
+      <div class="irow"><span class="ilbl">Biogenic Carbon</span><div class="btrack"><div class="bfill n" style="width:70%"></div></div><span class="ival" style="color:var(--neg)">−5.1 kg CO₂e</span></div>
+      <div class="irow"><span class="ilbl">Embodied Energy</span><div class="btrack"><div class="bfill m" style="width:22%"></div></div><span class="ival">18.4 MJ</span></div>
+      <div class="irow"><span class="ilbl">Water Use</span><div class="btrack"><div class="bfill m" style="width:18%"></div></div><span class="ival">62 L</span></div>
+      <div class="irow"><span class="ilbl">Acidification</span><div class="btrack"><div class="bfill m" style="width:12%"></div></div><span class="ival">0.004 mol H⁺e</span></div>
+    </div>
+    <div class="sec">
+      <div class="sec-lbl">Life Cycle Stages (GWP kg CO₂e)</div>
+      <div class="lcwrap">
+        <div class="lcbars">
+          <div class="lcb" style="background:#5a9e6e;height:16px" data-l="A1" title="A1 Raw material −1.2"></div>
+          <div class="lcb" style="background:#7a8c5e;height:8px"  data-l="A2" title="A2 Transport +0.08"></div>
+          <div class="lcb" style="background:#7a8c5e;height:10px" data-l="A3" title="A3 Manufacture +0.12"></div>
+          <div class="lcb" style="background:#5a9e6e;height:6px"  data-l="A4" title="A4 Delivery −0.06"></div>
+          <div class="lcb" style="background:#5a9e6e;height:20px" data-l="B1" title="B1 Use phase −2.0"></div>
+          <div class="lcb" style="background:#5a6e45;height:4px"  data-l="B6" title="B6 Op. energy ~0"></div>
+          <div class="lcb" style="background:#5a9e6e;height:30px" data-l="C3" title="C3 Biodegrades"></div>
+          <div class="lcb" style="background:#8fbc8f;height:44px" data-l="D"  title="D Beyond boundary −2.8"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-lbl">Export for CAD / BIM Software</div>
+      <div class="export-row">
+        <button class="ebtn" onclick="exportIFC()"><span class="fmt">IFC</span>Revit/ArchiCAD</button>
+        <button class="ebtn" onclick="exportOBJ()"><span class="fmt">OBJ</span>Rhino/Blender</button>
+        <button class="ebtn" onclick="exportJSON()"><span class="fmt">JSON</span>Smart Data</button>
+        <button class="ebtn" onclick="exportCSV()"><span class="fmt">CSV</span>Schedule</button>
+      </div>
+    </div>
+    <div class="sec" style="padding-bottom:7px"><div class="sec-lbl">BIM Instances Tracked</div></div>
+    <div class="blist-wrap" id="blist"></div>
+  </div>
+
+  <!-- CENTER: 3D VIEWER -->
+  <div id="viewer">
+    <canvas id="three-canvas"></canvas>
+    <div id="loadmsg">
+      <div class="ico">🍄</div>
+      <div class="txt">Growing Mycelium…</div>
+    </div>
+    <div class="vov" id="vid">
+      <div class="pid">MYC-PANEL-001</div>
+      <div>Pleurotus eryngii · Agroforestry bio-waste substrate</div>
+      <div class="hash">EPD-REF: AGF-MYC-2024-EU · ISO 14044 / EN 15804</div>
+    </div>
+    <div class="vov" id="gwpr">
+      <div class="big">−3.4</div>
+      <div class="unit">kg CO₂e / unit</div>
+      <div class="lbl">Carbon Negative</div>
+    </div>
+    <div class="vov" id="vtags">
+      <div class="tit">Pleurotus + Hemp Hurd Composite</div>
+      <div class="trow">
+        <span class="tag">Carbon Negative</span><span class="tag">Biodegradable</span>
+        <span class="tag">Acoustic Rw=0.7</span><span class="tag">Fire Class B</span>
+        <span class="tag">Thermal λ=0.06</span><span class="tag">Compostable</span>
+        <span class="tag">VOC Free</span><span class="tag">Regenerative</span>
+      </div>
+    </div>
+    <div class="vov" id="vctrl">
+      <button class="cb on" id="btn3d"    onclick="setView('persp',this)">3D</button>
+      <button class="cb"    id="btntop"   onclick="setView('top',this)">TOP</button>
+      <button class="cb"    id="btnfront" onclick="setView('front',this)">FRONT</button>
+      <button class="cb"    id="btnside"  onclick="setView('side',this)">SIDE</button>
+      <button class="cb"    id="btnwire"  onclick="toggleWire(this)">WIRE</button>
+      <button class="cb"    id="btnsect"  onclick="toggleSection(this)">SECTION</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: AI AGENT -->
+  <div class="side right">
+    <div id="aghdr">
+      <div class="ava">🍄<div class="pulse"></div></div>
+      <div>
+        <div class="agname">Myra — BIM Impact Agent</div>
+        <div class="agstat">● Tracking BIM models · Regenerative design aware</div>
+      </div>
+    </div>
+    <div id="ctabs">
+      <div class="ctab on" onclick="switchTab('bim',this)">BIM Context</div>
+      <div class="ctab"    onclick="switchTab('regen',this)">Regen</div>
+      <div class="ctab"    onclick="switchTab('epd',this)">EPD</div>
+    </div>
+    <div id="ctxv"></div>
+    <div id="msgs"></div>
+    <div id="cinp">
+      <div class="qps">
+        <button class="qp" onclick="sq('Analyse all BIM instances and suggest optimisations')">Analyse all</button>
+        <button class="qp" onclick="sq('Total carbon impact across all tracked models?')">Carbon total</button>
+        <button class="qp" onclick="sq('Suggest scheduling to reduce embodied carbon')">Schedule</button>
+        <button class="qp" onclick="sq('Cost vs impact analysis for current deployment')">Cost/impact</button>
+      </div>
+      <div class="inrow">
+        <textarea id="ti" placeholder="Ask Myra about impact, scheduling, design…" rows="1"></textarea>
+        <button id="sb" onclick="sendMsg()">Send ↑</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════
+// THREE.JS — safe deferred init
+// ═══════════════════════════════════════
+let renderer, scene, camera, panelMesh, filaments, filMat;
+let wireMode=false, sectionMode=false;
+let isDrag=false, mx=0, my=0;
+let rotX=0.28, rotY=0.45, tRX=0.28, tRY=0.45;
+let viewMode='persp';
+
+function initThree(){
+  const cv = document.getElementById('three-canvas');
+  const vw = document.getElementById('viewer');
+  const W  = vw.clientWidth;
+  const H  = vw.clientHeight;
+  if(!W || !H){ requestAnimationFrame(initThree); return; }
+
+  // Renderer
+  renderer = new THREE.WebGLRenderer({canvas:cv, antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(W,H);
+  renderer.setClearColor(0x0a0805,1);
+  renderer.shadowMap.enabled=true;
+
+  // Scene
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0a0805,5,12);
+
+  // Camera
+  camera = new THREE.PerspectiveCamera(40, W/H, 0.01, 50);
+  camera.position.set(1.6, 1.0, 2.1);
+  camera.lookAt(0,0,0);
+
+  // ── Lights ──
+  scene.add(new THREE.AmbientLight(0x604020, 0.7));
+
+  const sun = new THREE.DirectionalLight(0xffeedd, 1.6);
+  sun.position.set(2, 4, 3);
+  sun.castShadow=true;
+  scene.add(sun);
+
+  const fill = new THREE.DirectionalLight(0x507050, 0.5);
+  fill.position.set(-3, 1, -2);
+  scene.add(fill);
+
+  const back = new THREE.DirectionalLight(0x3a2508, 0.4);
+  back.position.set(0,-2,-3);
+  scene.add(back);
+
+  const rim = new THREE.PointLight(0x60aa60, 0.8, 8);
+  rim.position.set(-2, 2.5, -2);
+  scene.add(rim);
+
+  // ── Panel: 1m × 1m × 0.08m ──
+  const geo = new THREE.BoxGeometry(1.0, 1.0, 0.08, 30, 30, 4);
+  // Organic vertex noise on both faces
+  const pa = geo.attributes.position;
+  for(let i=0;i<pa.count;i++){
+    const z=pa.getZ(i);
+    if(Math.abs(z)>0.025){
+      pa.setX(i, pa.getX(i)+(Math.random()-.5)*0.014);
+      pa.setY(i, pa.getY(i)+(Math.random()-.5)*0.014);
+      pa.setZ(i, z+(Math.random()-.5)*0.007);
+    }
+  }
+  pa.needsUpdate=true;
+  geo.computeVertexNormals();
+
+  const mat = new THREE.MeshStandardMaterial({
+    color:0xb08548,
+    roughness:0.93,
+    metalness:0.0,
+    emissive:new THREE.Color(0x180c02),
+    emissiveIntensity:0.2
+  });
+
+  panelMesh = new THREE.Mesh(geo, mat);
+  panelMesh.castShadow=true;
+  panelMesh.receiveShadow=true;
+  scene.add(panelMesh);
+
+  // Edge lines
+  const eGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.0,1.0,0.08));
+  const eMat = new THREE.LineBasicMaterial({color:0x8fbc8f, transparent:true, opacity:0.3});
+  scene.add(new THREE.LineSegments(eGeo,eMat));
+
+  // Mycelium surface particles
+  const fGeo = new THREE.BufferGeometry();
+  const N=900, fp=new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    fp[i*3]   =(Math.random()-.5)*1.04;
+    fp[i*3+1] =(Math.random()-.5)*1.04;
+    fp[i*3+2] =(Math.random()<.5?0.042:-0.042)+(Math.random()-.5)*0.012;
+  }
+  fGeo.setAttribute('position',new THREE.BufferAttribute(fp,3));
+  filMat = new THREE.PointsMaterial({color:0xa8d8a8, size:0.005, transparent:true, opacity:0.55});
+  filaments = new THREE.Points(fGeo, filMat);
+  scene.add(filaments);
+
+  // Floor grid
+  const grid = new THREE.GridHelper(6,28,0x2a1a06,0x1a0e04);
+  grid.position.y=-0.72;
+  scene.add(grid);
+
+  // Controls
+  cv.addEventListener('mousedown',e=>{isDrag=true;mx=e.clientX;my=e.clientY});
+  window.addEventListener('mouseup',()=>isDrag=false);
+  window.addEventListener('mousemove',e=>{
+    if(!isDrag||viewMode!=='persp')return;
+    tRY+=(e.clientX-mx)*0.007; tRX+=(e.clientY-my)*0.007;
+    tRX=Math.max(-1.3,Math.min(1.3,tRX));
+    mx=e.clientX; my=e.clientY;
+  });
+  cv.addEventListener('wheel',e=>{
+    const d=1+e.deltaY*0.001;
+    camera.position.multiplyScalar(d);
+  },{passive:true});
+
+  window.addEventListener('resize',()=>{
+    const w=vw.clientWidth, h=vw.clientHeight;
+    renderer.setSize(w,h);
+    camera.aspect=w/h;
+    camera.updateProjectionMatrix();
+  });
+
+  // Fade out loader
+  const lm=document.getElementById('loadmsg');
+  lm.style.opacity='0';
+  setTimeout(()=>lm.style.display='none',700);
+
+  // Render loop
+  let t=0;
+  (function loop(){
+    requestAnimationFrame(loop);
+    t+=0.011;
+    if(viewMode==='persp'){
+      rotX+=(tRX-rotX)*0.08;
+      rotY+=(tRY-rotY)*0.08;
+      if(!isDrag) tRY+=0.003;
+      panelMesh.rotation.set(rotX,rotY,0);
+      filaments.rotation.set(rotX,rotY,0);
+    }
+    const b=1+Math.sin(t*.4)*.003;
+    panelMesh.scale.set(b,b,1);
+    if(filMat) filMat.opacity=0.4+Math.sin(t*.9)*.12;
+    renderer.render(scene,camera);
+  })();
+}
+
+// Wait for full layout paint
+window.addEventListener('load',()=>{ setTimeout(initThree,150); });
+
+function setView(v,btn){
+  viewMode=v;
+  document.querySelectorAll('.cb').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  if(!camera)return;
+  const pos={persp:[1.6,1.0,2.1], top:[0,3.2,0.01], front:[0,0,3.0], side:[3.0,0,0]};
+  const p=pos[v]||pos.persp;
+  camera.position.set(p[0],p[1],p[2]);
+  camera.lookAt(0,0,0);
+  if(v!=='persp'&&panelMesh){panelMesh.rotation.set(0,0,0);filaments.rotation.set(0,0,0);}
+}
+
+function toggleWire(btn){
+  wireMode=!wireMode;
+  if(panelMesh) panelMesh.material.wireframe=wireMode;
+  btn.classList.toggle('on',wireMode);
+}
+
+function toggleSection(btn){
+  sectionMode=!sectionMode;
+  btn.classList.toggle('on',sectionMode);
+  if(!renderer)return;
+  renderer.clippingPlanes=sectionMode?[new THREE.Plane(new THREE.Vector3(0,-1,0),0.12)]:[];
+}
+
+// ═══════════════════════════════════════
+// BIM DATA
+// ═══════════════════════════════════════
+const EPD={gwp:-3.4, bio:-5.1, energy:18.4, water:62, cost:85, install:0.25};
+const bimData=[
+  {id:'BIM-001',model:'Civic Centre — Revit 2024',      zone:'Facade East Elevation',     qty:120,phase:'DD',notes:'Primary cladding, south exposure'},
+  {id:'BIM-002',model:'Office Refurb — ArchiCAD 26',    zone:'Interior Partitions L2–L4', qty:84, phase:'CD',notes:'Acoustic partitioning'},
+  {id:'BIM-003',model:'Community Hub — IFC Export',     zone:'Roof + Ceiling Panels',     qty:56, phase:'SD',notes:'Thermal performance priority'}
+];
+let activeBI=0;
+
+function imp(qty){return{gwp:(qty*EPD.gwp).toFixed(1),bio:(qty*EPD.bio).toFixed(1),en:(qty*EPD.energy/1000).toFixed(2),wat:(qty*EPD.water).toFixed(0),cost:(qty*EPD.cost).toLocaleString(),hrs:(qty*EPD.install).toFixed(1)};}
+
+function renderBIM(){
+  const list=document.getElementById('blist');
+  list.innerHTML='';
+  let tQ=0,tG=0;
+  bimData.forEach((d,i)=>{
+    const m=imp(d.qty); tQ+=d.qty; tG+=parseFloat(m.gwp);
+    const el=document.createElement('div');
+    el.className='bi'+(i===activeBI?' on':'');
+    el.onclick=()=>{activeBI=i;renderBIM();};
+    el.innerHTML=`<div class="bi-name">${d.model}</div>
+      <div class="bi-meta"><span>${d.zone}</span><span>${d.qty}u · ${d.phase}</span></div>
+      <div class="bi-imp"><span class="g">GWP: ${m.gwp} kg CO₂e</span><span>€${m.cost}</span><span>${m.hrs}h</span></div>`;
+    list.appendChild(el);
+  });
+  const ab=document.createElement('button');
+  ab.className='addbtn'; ab.textContent='+ Add BIM Model'; ab.onclick=addBIM;
+  list.appendChild(ab);
+  document.getElementById('mc').textContent=bimData.length;
+  document.getElementById('ic').textContent=tQ;
+  document.getElementById('nc').textContent=tG.toFixed(1)+' kg CO₂e';
+}
+
+function addBIM(){
+  const names=['Housing Block — Revit 2025','School Extension — Vectorworks','Retail Fit-Out — Grasshopper','Warehouse — IFC','Cultural Centre — Revit'];
+  const zones=['Facade System','Interior Walls','Ceiling Panels','Acoustic Baffles','Roof Cladding'];
+  const phases=['SD','DD','CD','CA'];
+  bimData.push({
+    id:`BIM-00${bimData.length+1}`,
+    model:names[Math.floor(Math.random()*names.length)],
+    zone:zones[Math.floor(Math.random()*zones.length)],
+    qty:Math.floor(Math.random()*100)+20,
+    phase:phases[Math.floor(Math.random()*phases.length)],
+    notes:'Newly tracked instance'
+  });
+  renderBIM(); notif('New BIM model added to tracking');
+}
+renderBIM();
+
+// ═══════════════════════════════════════
+// EXPORTS
+// ═══════════════════════════════════════
+function dl(name,content,type='text/plain'){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type}));
+  a.download=name; a.click();
+  notif('Exported: '+name);
+}
+
+function exportIFC(){
+  const d=new Date().toISOString();
+  dl('MYC-PANEL-001.ifc',`ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('MyceliumPanel Smart BIM Object'),'2;1');
+FILE_NAME('MYC-PANEL-001.ifc','${d}',('BIM Agent'),('MyceliumPanel'),'IFC2X3','','');
+FILE_SCHEMA(('IFC2X3'));
+ENDSEC;
+DATA;
+/* ── MYCELIUM COMPOSITE PANEL 1000x1000x80mm ──────────────────── */
+/* EPD Ref  : AGF-MYC-2024-EU | ISO 14044 / EN 15804              */
+/* GWP A1-C4: -3.4 kg CO2e/unit  |  Biogenic: -5.1 kg CO2e/unit  */
+/* Energy   : 18.4 MJ/unit       |  Water   : 62 L/unit           */
+/* Substrate: Pleurotus eryngii on hemp hurd/straw/oak sawdust     */
+#1=IFCPROJECT('MYC001PRJ',#2,'MyceliumPanel BIM',$,$,$,$,(#20),#30);
+#2=IFCOWNERHISTORY(#3,#4,$,.ADDED.,$,$,$,0);
+#3=IFCPERSONANDORGANIZATION(#5,#6,$);
+#4=IFCAPPLICATION(#6,'1.0','MyceliumPanel BIM','MYC-BIM');
+#5=IFCPERSON($,'MyraAgent','BIM',$,$,$,$,$);
+#6=IFCORGANIZATION($,'MyceliumPanel','Smart BIM Objects',$,$);
+#20=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-5,#21,$);
+#21=IFCAXIS2PLACEMENT3D(#22,$,$);
+#22=IFCCARTESIANPOINT((0.,0.,0.));
+#30=IFCUNITASSIGNMENT((#31,#32,#33));
+#31=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);
+#32=IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.);
+#33=IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.);
+/* Geometry: Box 1.0 x 1.0 x 0.08 m */
+#200=IFCPRODUCTDEFINITIONSHAPE($,$,(#210));
+#210=IFCSHAPEREPRESENTATION(#20,'Body','SweptSolid',(#220));
+#220=IFCEXTRUDEDAREASOLID(#221,#222,#223,0.08);
+#221=IFCRECTANGLEPROFILEDEF(.AREA.,$,#224,1.0,1.0);
+#222=IFCAXIS2PLACEMENT3D(#22,$,$);
+#223=IFCDIRECTION((0.,0.,1.));
+#224=IFCAXIS2PLACEMENT2D(#225,$);
+#225=IFCCARTESIANPOINT((0.,0.));
+/* Panel instance */
+#300=IFCWALL('MYC-PANEL-001',#2,'MyceliumPanel_001',
+  'Mycelium composite panel 1000x1000x80mm — EPD embedded',$,#301,#200,$,.NOTDEFINED.);
+#301=IFCLOCALPLACEMENT($,#302);
+#302=IFCAXIS2PLACEMENT3D(#22,$,$);
+/* Pset_EnvironmentalImpactValues */
+#400=IFCPROPERTYSET('MYC-EPD',#2,'Pset_EnvironmentalImpactValues',$,(#401,#402,#403,#404,#405,#406,#407,#408,#409,#410));
+#401=IFCPROPERTYSINGLEVALUE('GWP_A1_to_C4',$,IFCREAL(-3.4),$);
+#402=IFCPROPERTYSINGLEVALUE('GWP_BiogenicCarbon',$,IFCREAL(-5.1),$);
+#403=IFCPROPERTYSINGLEVALUE('EmbodiedEnergy_MJ',$,IFCREAL(18.4),$);
+#404=IFCPROPERTYSINGLEVALUE('WaterConsumption_L',$,IFCREAL(62.0),$);
+#405=IFCPROPERTYSINGLEVALUE('Acidification_molHe',$,IFCREAL(0.004),$);
+#406=IFCPROPERTYSINGLEVALUE('EPD_Reference',$,IFCTEXT('AGF-MYC-2024-EU'),$);
+#407=IFCPROPERTYSINGLEVALUE('Standard',$,IFCTEXT('ISO 14044 / EN 15804'),$);
+#408=IFCPROPERTYSINGLEVALUE('Substrate',$,IFCTEXT('Hemp hurd 60pct Straw 25pct Oak sawdust 15pct'),$);
+#409=IFCPROPERTYSINGLEVALUE('Species',$,IFCTEXT('Pleurotus eryngii'),$);
+#410=IFCPROPERTYSINGLEVALUE('EndOfLife',$,IFCTEXT('100pct Compostable Biodegradable'),$);
+/* Pset_MaterialThermal + Performance */
+#500=IFCPROPERTYSET('MYC-PERF',#2,'Pset_MaterialPerformance',$,(#501,#502,#503,#504,#505));
+#501=IFCPROPERTYSINGLEVALUE('ThermalConductivity_W_mK',$,IFCREAL(0.06),$);
+#502=IFCPROPERTYSINGLEVALUE('AcousticRating_Rw',$,IFCREAL(0.7),$);
+#503=IFCPROPERTYSINGLEVALUE('FireClassification',$,IFCTEXT('Class B EN 13501'),$);
+#504=IFCPROPERTYSINGLEVALUE('VOC_Emissions',$,IFCTEXT('None detected'),$);
+#505=IFCPROPERTYSINGLEVALUE('UnitCost_EUR',$,IFCREAL(85.0),$);
+#600=IFCRELDEFINESBYPROPERTIES('REL-EPD',#2,$,$,(#300),#400);
+#601=IFCRELDEFINESBYPROPERTIES('REL-PERF',#2,$,$,(#300),#500);
+ENDSEC;
+END-ISO-10303-21;`);
+}
+
+function exportOBJ(){
+  const hw=0.5,hh=0.5,hd=0.04;
+  dl('MYC-PANEL-001.obj',`# MyceliumPanel OBJ — 1000x1000x80mm (units: metres)
+# EPD: GWP -3.4 kg CO2e | Biogenic -5.1 | Energy 18.4MJ | Water 62L
+# Species: Pleurotus eryngii | Substrate: Agroforestry bio-waste
+# Import into Rhino, 3ds Max, SketchUp, Blender, Vectorworks
+mtllib MYC-PANEL-001.mtl
+o MyceliumPanel_1000x1000x80
+v -${hw} -${hh} -${hd}
+v  ${hw} -${hh} -${hd}
+v  ${hw}  ${hh} -${hd}
+v -${hw}  ${hh} -${hd}
+v -${hw} -${hh}  ${hd}
+v  ${hw} -${hh}  ${hd}
+v  ${hw}  ${hh}  ${hd}
+v -${hw}  ${hh}  ${hd}
+vt 0 0
+vt 1 0
+vt 1 1
+vt 0 1
+vn 0 0 -1
+vn 0 0  1
+vn 0 -1 0
+vn 0  1 0
+vn -1 0 0
+vn  1 0 0
+usemtl MyceliumPanel
+f 1/1/1 2/2/1 3/3/1
+f 1/1/1 3/3/1 4/4/1
+f 5/1/2 7/3/2 6/2/2
+f 5/1/2 8/4/2 7/3/2
+f 1/1/3 6/2/3 2/3/3
+f 1/1/3 5/4/3 6/2/3
+f 4/1/4 3/2/4 7/3/4
+f 4/1/4 7/3/4 8/4/4
+f 1/1/5 4/2/5 8/3/5
+f 1/1/5 8/3/5 5/4/5
+f 2/1/6 6/2/6 7/3/6
+f 2/1/6 7/3/6 3/4/6`);
+  setTimeout(()=>dl('MYC-PANEL-001.mtl',`newmtl MyceliumPanel\nKa 0.44 0.33 0.20\nKd 0.69 0.52 0.30\nKs 0.04 0.04 0.03\nNs 6.0\nd 1.0\nillum 2`),350);
+}
+
+function exportJSON(){
+  dl('MYC-PANEL-SmartData.json',JSON.stringify({
+    id:'MYC-PANEL-001',type:'MyceliumCompositePanel',version:'1.0.0',
+    generated:new Date().toISOString(),
+    geometry:{height_mm:1000,width_mm:1000,depth_mm:80,volume_m3:0.08},
+    material:{species:'Pleurotus eryngii',substrate:{hemp_hurd:'60%',straw:'25%',oak_sawdust:'15%'},origin:'Agroforestry bio-waste',density_kg_m3:120},
+    epd:{reference:'AGF-MYC-2024-EU',standard:'ISO 14044 / EN 15804',gwp_a1_c4_kgCO2e:-3.4,biogenic_carbon_kgCO2e:-5.1,embodied_energy_MJ:18.4,water_L:62,acidification_molHe:0.004,lifecycle_stages:{A1:-1.2,A2:0.08,A3:0.12,A4:-0.06,B1:-2.0,B6:0,C3:'biodegrades',D:-2.8}},
+    performance:{thermal_conductivity_W_mK:0.06,acoustic_Rw:0.7,fire_class:'Class B EN 13501',voc:'none',end_of_life:'compostable'},
+    cost:{unit_EUR:85,install_hr_per_unit:0.25},
+    bim_tracking:bimData.map(d=>({...d,impact:imp(d.qty)}))
+  },null,2),'application/json');
+}
+
+function exportCSV(){
+  let csv='BIM Model,Zone,Phase,Qty,GWP kg CO2e,Biogenic CO2e,Energy GJ,Water m3,Cost EUR,Install hrs\n';
+  bimData.forEach(d=>{const m=imp(d.qty);csv+=`"${d.model}","${d.zone}",${d.phase},${d.qty},${m.gwp},${m.bio},${m.en},${(d.qty*EPD.water/1000).toFixed(2)},${d.qty*EPD.cost},${m.hrs}\n`;});
+  dl('MYC-Impact-Schedule.csv',csv,'text/csv');
+}
+
+// ═══════════════════════════════════════
+// CONTEXT TABS
+// ═══════════════════════════════════════
+function bimSum(){return bimData.map(d=>{const m=imp(d.qty);return`${d.model} | ${d.zone} | ${d.qty}u | Phase ${d.phase} | GWP:${m.gwp} kg CO₂e | €${m.cost} | ${m.hrs}h`;}).join('\n');}
+const ctxC={
+  bim:()=>bimData.map(d=>`<span class="cchip">${d.model.split('—')[0].trim()}</span><span class="cchip">${d.qty}u·${d.phase}</span>`).join(' ')+`<br><span style="color:#5a4a30">Tracking ${bimData.length} models · ${bimData.reduce((a,b)=>a+b.qty,0)} units</span>`,
+  regen:()=>`<span class="cchip">Circular Economy</span><span class="cchip">Biophilic Design</span><span class="cchip">Carbon Sequestration</span><span class="cchip">Waste Valorisation</span><span class="cchip">Living Systems</span><span class="cchip">LBC</span><span class="cchip">BREEAM Outstanding</span><br><span style="color:#5a4a30">Regenerative design active — LCA, circularity, end-of-life tracked.</span>`,
+  epd:()=>`<span class="cchip">GWP −3.4 kg CO₂e</span><span class="cchip">Biogenic −5.1</span><span class="cchip">18.4 MJ</span><span class="cchip">62L water</span><span class="cchip">ISO 14044</span><span class="cchip">EN 15804</span><br><span style="color:#5a4a30">Hemp hurd 60% · Straw 25% · Oak sawdust 15% · Pleurotus eryngii.</span>`
+};
+function switchTab(k,el){
+  document.querySelectorAll('.ctab').forEach(t=>t.classList.remove('on'));
+  if(el) el.classList.add('on');
+  document.getElementById('ctxv').innerHTML=ctxC[k]();
+}
+document.getElementById('ctxv').innerHTML=ctxC.bim();
+
+// ═══════════════════════════════════════
+// AI AGENT
+// ═══════════════════════════════════════
+const hist=[];
+function sysPrompt(){return`You are Myra, an expert AI embedded in a smart mycelium composite BIM panel. You combine:
+
+1. REGENERATIVE DESIGN — living-systems thinking, circular economy, biophilic design, carbon sequestration. Frameworks: Living Building Challenge, BREEAM Outstanding, LEED Platinum, Cradle to Cradle.
+
+2. EPD/LCA (THIS PANEL):
+   - 1000×1000×80mm | ~9.6 kg | Pleurotus eryngii on hemp hurd/straw/oak sawdust (agroforestry bio-waste)
+   - GWP A1–C4: −3.4 kg CO₂e/unit | Biogenic carbon: −5.1 kg CO₂e/unit
+   - Embodied energy: 18.4 MJ | Water: 62 L | Acidification: 0.004 mol H⁺e
+   - End of life: 100% compostable | Thermal λ=0.06 | Acoustic Rw=0.7 | Fire Class B
+   - EPD: AGF-MYC-2024-EU | ISO 14044 / EN 15804 | Cost €85/unit | 0.25 hr install
+
+3. CURRENT BIM TRACKING:
+${bimSum()}
+
+4. RECOMMENDATIONS: Be specific and quantified on impact optimisation, cost efficiency, scheduling, and regenerative design integration. Reference actual EPD values and BIM data.`;}
+
+async function callAgent(msg){
+  hist.push({role:'user',content:msg});
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:sysPrompt(),messages:hist})
+  });
+  const d=await r.json();
+  const txt=d.content?.map(b=>b.text||'').join('')||'Agent unavailable.';
+  hist.push({role:'assistant',content:txt});
+  return txt;
+}
+
+function appendMsg(role,text,time){
+  const msgs=document.getElementById('msgs');
+  document.getElementById('typing-ind')?.remove();
+  const d=document.createElement('div');
+  d.className='msg '+role;
+  const html=text
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^### (.+)$/gm,'<span style="color:var(--myc);font-size:9.5px">$1</span>')
+    .replace(/^## (.+)$/gm,'<span style="color:var(--acc);font-size:10px">$1</span>')
+    .replace(/^- (.+)$/gm,'· $1')
+    .replace(/\n/g,'<br>');
+  d.innerHTML=`<div class="bub">${html}</div><div class="mmeta">${time||new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>`;
+  msgs.appendChild(d);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function showTyping(){
+  const msgs=document.getElementById('msgs');
+  const d=document.createElement('div');
+  d.className='msg a'; d.id='typing-ind';
+  d.innerHTML=`<div class="tdots"><div class="td"></div><div class="td"></div><div class="td"></div></div>`;
+  msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
+}
+
+async function sendMsg(){
+  const ti=document.getElementById('ti');
+  const txt=ti.value.trim();
+  if(!txt)return;
+  ti.value='';
+  document.getElementById('sb').disabled=true;
+  appendMsg('u',txt);
+  showTyping();
+  try{const r=await callAgent(txt); appendMsg('a',r);}
+  catch(e){appendMsg('a','⚠ Agent unavailable — '+e.message);}
+  document.getElementById('sb').disabled=false;
+  ti.focus();
+}
+
+function sq(t){document.getElementById('ti').value=t;sendMsg();}
+document.getElementById('ti').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+
+// Greeting
+setTimeout(()=>{
+  const tQ=bimData.reduce((a,b)=>a+b.qty,0);
+  appendMsg('a',
+    `**Hello — I'm Myra, your BIM Impact Agent.**\n\nCurrently tracking **${bimData.length} BIM models** with **${tQ} panel instances**.\n\n**Aggregate impact:**\n- Net carbon: **${(tQ*EPD.gwp).toFixed(1)} kg CO₂e** ✓ carbon negative\n- Embodied energy: ${(tQ*EPD.energy/1000).toFixed(1)} GJ\n- Total cost: €${(tQ*EPD.cost).toLocaleString()}\n- Install estimate: ${(tQ*EPD.install).toFixed(0)} hours\n\nUse the **Export** buttons to download IFC (Revit/ArchiCAD), OBJ (Rhino), JSON or CSV. Click **? Hosting & Data** in the header for full hosting and cost info. What would you like to optimise?`,
+    '09:00'
+  );
+},900);
+
+function notif(msg){
+  const n=document.createElement('div');
+  n.className='notif'; n.textContent=msg;
+  document.body.appendChild(n);
+  setTimeout(()=>n.remove(),2800);
+}
+</script>
+</body>
+</html>
